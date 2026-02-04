@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import ViewerCanvas from '../components/viewer/ViewerCanvas'
 import { RobotArmModel } from '../components/viewer/objects/RobotArm/model'
+import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
 
 // 1. 모델 매핑 객체
 const MODEL_DATA: Record<string, any> = {
   robotarm: RobotArmModel,
-  suspension: RobotArmModel,
+  suspension: SuspensionModel,
 }
 
 export default function StudyPage() {

@@ -1,4 +1,3 @@
-import type { ModelDef } from '@/viewer/types'
 
 export const RobotArmModel = {
   parts: [
