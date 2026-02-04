@@ -152,7 +152,7 @@ export default function StudyPage() {
   )
 }
 
-/* ================= 정돈된 스타일 정의 ================= */
+/* ================= 스타일 ================= */
 
 const panelCardStyle: React.CSSProperties = {
   background: '#0f172a',
