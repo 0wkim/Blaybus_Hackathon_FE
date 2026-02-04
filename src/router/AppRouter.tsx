@@ -7,15 +7,58 @@ import DashboardPage from "../pages/DashboardPage";
 import StudyPage from "../pages/StudyPage";
 import PartsPage from "../pages/PartsPage";
 
+import ProtectedRoute from "./ProtectedRoute";
+import PublicRoute from "./PublicRoute";
+
 function AppRouter() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/study" element={<StudyPage />} />
-            <Route path="/parts" element={<PartsPage />} />
+
+            <Route
+                path="/login"
+                element={
+                <PublicRoute>
+                    <LoginPage />
+                </PublicRoute>
+                }
+            />
+
+            <Route
+                path="/signup"
+                element={
+                <PublicRoute>
+                    <SignupPage />
+                </PublicRoute>
+                }
+            />
+
+            <Route
+                path="/dashboard"
+                element={
+                <ProtectedRoute>
+                    <DashboardPage />
+                </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/study"
+                element={
+                <ProtectedRoute>
+                    <StudyPage />
+                </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/parts"
+                element={
+                <ProtectedRoute>
+                    <PartsPage />
+                </ProtectedRoute>
+                }
+            />
         </Routes>
     )
 }
