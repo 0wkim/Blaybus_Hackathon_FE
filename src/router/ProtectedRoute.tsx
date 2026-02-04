@@ -8,7 +8,7 @@ export default function ProtectedRoute({
 }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return <div>로딩 중...</div>;
+  if (isLoading) return <div>인증 확인 중...</div>;
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
