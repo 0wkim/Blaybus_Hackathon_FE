@@ -3,6 +3,7 @@ export const V4EngineModel = {
     {
       id: 'Crankshaft',
       path: '/models/V4_Engine/Crankshaft.glb',
+      thumbnail: '/models/V4_Engine/thumbnails/Crankshaft.png',
       assembled: { x: 0, y: 0.05, z: 0.3 },
       rotation: { x: -Math.PI / 2, y: 0, z: -4.7 }, 
       exploded: { x: 0, y: -0.3, z: 0 },
@@ -10,6 +11,7 @@ export const V4EngineModel = {
     {
       id: 'ConnectingRobCap_1',
       path: '/models/V4_Engine/ConnectingRodCap.glb',
+      thumbnail: '/models/V4_Engine/thumbnails/ConnectingRodCap.png',
       assembled: { x: 0.04, y: 0.05, z: 0.1435 },
       rotation: { x: 0, y: 0, z: Math.PI / 30 }, 
       exploded: { x: 0, y: 0.15, z: 0.25 },
@@ -17,6 +19,7 @@ export const V4EngineModel = {
     {
       id: 'ConnectingRob_1',
       path: '/models/V4_Engine/ConnectingRod.glb',
+      thumbnail: '/models/V4_Engine/thumbnails/ConnectingRod.png',
       assembled: { x: 0.019, y: 0.25, z: 0.1435 },
       rotation: { x: 0, y: 0, z: Math.PI / 30 }, 
       exploded: { x: 0, y: 0.3, z: 0.25 },
@@ -24,6 +27,7 @@ export const V4EngineModel = {
     {
       id: 'Piston_1',
       path: '/models/V4_Engine/Piston.glb',
+      thumbnail: '/models/V4_Engine/thumbnails/Piston.png',
       assembled: { x: 0.022, y: 0.223, z: 0.1435 },
       rotation: { x: 0, y: 0, z: Math.PI / 30 }, 
       exploded: { x: 0, y: 0.45, z: 0.25 },
@@ -31,6 +35,7 @@ export const V4EngineModel = {
     {
       id: 'PistonPin_1',
       path: '/models/V4_Engine/PistonPin.glb',
+      thumbnail: '/models/V4_Engine/thumbnails/PistonPin.png',
       assembled: { x: 0.018, y: 0.25, z: 0.184 },
       rotation: { x: 0, y: 0, z: Math.PI / 30 }, 
       exploded: { x: 0, y: 0.6, z: 0.25 },

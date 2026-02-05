@@ -75,7 +75,7 @@ export default function StudyPage() {
       <header style={headerStyle}>
         <div style={logoStyle}>SIMEX <span style={{ color: '#38bdf8' }}>•</span></div>
         <nav style={navStyle}>
-          <Link to="/" style={navItemStyle}>Home</Link>
+          <Link to="/dashboard" style={navItemStyle}>Home</Link>
           <Link to="/study" style={{ ...navItemStyle, color: '#fff', background: '#1e293b', borderRadius: '8px' }}>Study</Link>
           <Link to="/parts" style={navItemStyle}>Parts</Link>
         </nav>
@@ -147,18 +147,36 @@ export default function StudyPage() {
 
             {viewMode === 'single' ? (
               <div style={singleGridStyle}>
-                {currentModel.parts.map((p: any) => (
-                  <div key={p.id} style={partCardStyle} onClick={() => navigate(`/parts/${modelId}/${p.id}`)}>
-                    <div style={thumbWrapperStyle}>
-                      <img src={p.thumbnail} style={thumbStyle} alt={p.id} />
-                      {/* <div style={pathBadgeStyle}>{p.id}.glb</div> */}
+                {currentModel.parts
+                  // 1. 썸네일이 있고, 중복된 썸네일 경로는 첫 번째 것만 남김
+                  .filter((p: any, index: number, self: any[]) => 
+                    p.thumbnail && 
+                    p.thumbnail.trim() !== "" &&
+                    self.findIndex(t => t.thumbnail === p.thumbnail) === index
+                  )
+                  .map((p: any) => (
+                    <div key={p.id} style={partCardStyle} onClick={() => navigate(`/parts/${modelId}/${p.id}`)}>
+                      <div style={thumbWrapperStyle}>
+                        <img src={p.thumbnail} style={thumbStyle} alt={p.id} />
+                      </div>
+                      <div style={{ padding: '0 4px' }}>
+                        <span style={{ 
+                          display: 'block', 
+                          fontSize: '14px', 
+                          fontWeight: 600, 
+                          color: '#f1f5f9',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis' 
+                        }}>
+                          {p.id}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#3b82f6', marginTop: '4px', fontWeight: 600 }}>
+                          View Details →
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ padding: '0 4px' }}>
-                      <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#f1f5f9' }}>{p.id}</span>
-                      <span style={{ fontSize: '11px', color: '#3b82f6', marginTop: '4px', fontWeight: 600 }}>View Details →</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             ) : (
               <ViewerCanvas

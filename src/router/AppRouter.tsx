@@ -12,9 +12,10 @@ function AppRouter() {
     return (
         <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-
+            
+            {/* PublicRoute로 감싸진 부분을 아래처럼 element만 남기세요 */}
+            <Route path="/login" element={<LoginPage />} /> 
+            <Route path="/signup" element={<SignupPage />} />
             <Route
                 path="/dashboard"
                 element={<ProtectedRoute><DashboardPage /></ProtectedRoute>}
