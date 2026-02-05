@@ -21,6 +21,11 @@ export default function DashboardPage() {
                     <h2>🚗 Suspension</h2>
                     <p style={{ color: '#94a3b8' }}>서스펜션 메커니즘 학습</p>
                 </div>
+
+                <div onClick={() => navigate("/study/v4engine")} style={cardStyle}>
+                    <h2>⚙️ V4_Engine</h2>
+                    <p style={{ color: '#94a3b8' }}>V4실린더 엔진</p>
+                </div>
             </div>
 
             <button onClick={auth.logout} style={{ marginTop: '50px', cursor: 'pointer' }}>
