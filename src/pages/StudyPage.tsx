@@ -55,7 +55,8 @@ export default function StudyPage() {
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [ghost, setGhost] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
-  const [showGuide, setShowGuide] = useState(true) // ⭐ 가이드 열림 상태
+  const [showGuide, setShowGuide] = useState(true) //  가이드 열림 상태
+  const [showAssemblyGuide, setShowAssemblyGuide] = useState(true) // 조립도용
 
   useEffect(() => {
     setSelectedPartId(null)
@@ -104,7 +105,23 @@ export default function StudyPage() {
               </div>
             )}
 
-            {/* ⭐ 시뮬레이터 모드 전용 마우스 가이드 (내용 추가됨) */}
+            {/*  조립도 전용 안내 (접기 기능 추가) */}
+            {viewMode === 'assembly' && (
+              <div style={styles.guideWrapper}>
+                <button onClick={() => setShowAssemblyGuide(!showAssemblyGuide)} style={styles.guideToggleBtn}>
+                  {showAssemblyGuide ? '▽ Assembly View Info' : '△ Assembly View Info'}
+                </button>
+                {showAssemblyGuide && (
+                  <div style={styles.assemblyNotice}>
+                    <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '8px' }}>ⓘ INFO</span>
+                    조립도 모드에서는 모델의 전체 구조를 열람만 할 수 있습니다. <br/>
+                    분해 및 조립 시뮬레이션은 <span style={{ color: '#38bdf8' }}>'시뮬레이터'</span> 탭을 이용해 주세요.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/*  시뮬레이터 모드 전용 마우스 가이드  */}
             {viewMode === 'simulator' && (
               <div style={guideWrapperStyle}>
                 <button 
@@ -132,7 +149,7 @@ export default function StudyPage() {
                   <div key={p.id} style={partCardStyle} onClick={() => navigate(`/parts/${modelId}/${p.id}`)}>
                     <div style={thumbWrapperStyle}>
                       <img src={p.thumbnail} style={thumbStyle} alt={p.id} />
-                      <div style={pathBadgeStyle}>{p.id}.glb</div>
+                      {/* <div style={pathBadgeStyle}>{p.id}.glb</div> */}
                     </div>
                     <div style={{ padding: '0 4px' }}>
                       <span style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#f1f5f9' }}>{p.id}</span>
@@ -199,306 +216,332 @@ export default function StudyPage() {
    ============================================================= */
 
 const containerStyle: React.CSSProperties = {
-  height: '100vh', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  background: '#020617'
-}
+  height: '100vh',
+  display: 'flex',
+  flexDirection: 'column',
+  background: '#020617',
+};
 
 const headerStyle: React.CSSProperties = {
-  height: '60px', 
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'space-between', 
+  height: '60px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
   padding: '0 24px',
-  background: 'rgba(2, 6, 23, 0.8)', 
-  backdropFilter: 'blur(10px)', 
-  borderBottom: '1px solid #1e293b', 
-  zIndex: 100
-}
+  background: 'rgba(2, 6, 23, 0.8)',
+  backdropFilter: 'blur(10px)',
+  borderBottom: '1px solid #1e293b',
+  zIndex: 100,
+};
 
-const logoStyle: React.CSSProperties = { 
-  fontSize: '20px', 
-  fontWeight: 900, 
-  color: '#fff' 
-}
+const logoStyle: React.CSSProperties = {
+  fontSize: '20px',
+  fontWeight: 900,
+  color: '#fff',
+};
 
-const navStyle: React.CSSProperties = { 
-  display: 'flex', 
+const navStyle: React.CSSProperties = {
+  display: 'flex',
   gap: '8px',
-  background: '#0f172a', 
-  padding: '4px', 
-  borderRadius: '12px' 
-}
+  background: '#0f172a',
+  padding: '4px',
+  borderRadius: '12px',
+};
 
-const navItemStyle: React.CSSProperties = { 
-  padding: '6px 16px', 
-  color: '#94a3b8', 
-  textDecoration: 'none', 
-  fontSize: '14px' 
-}
+const navItemStyle: React.CSSProperties = {
+  padding: '6px 16px',
+  color: '#94a3b8',
+  textDecoration: 'none',
+  fontSize: '14px',
+};
 
 const mainLayoutStyle = (isExpanded: boolean): React.CSSProperties => ({
-  flex: 1, 
-  display: 'grid', 
-  gridTemplateColumns: isExpanded ? '1fr' : '1fr 380px', 
-  padding: '20px', 
-  gap: '20px', 
-  overflow: 'hidden'
-})
+  flex: 1,
+  display: 'grid',
+  gridTemplateColumns: isExpanded ? '1fr' : '1fr 380px',
+  padding: '20px',
+  gap: '20px',
+  overflow: 'hidden',
+});
 
 const viewerPanelStyle: React.CSSProperties = {
-  position: 'relative', 
-  background: '#0f172a', 
-  borderRadius: '24px', 
-  border: '1px solid #1e293b', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  overflow: 'hidden'
-}
+  position: 'relative',
+  background: '#0f172a',
+  borderRadius: '24px',
+  border: '1px solid #1e293b',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+};
 
 const subHeaderStyle: React.CSSProperties = {
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'space-between', 
-  padding: '16px 20px', 
-  borderBottom: '1px solid #1e293b', 
-  background: 'rgba(30, 41, 59, 0.3)'
-}
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '16px 20px',
+  borderBottom: '1px solid #1e293b',
+  background: 'rgba(30, 41, 59, 0.3)',
+};
 
-const canvasContainerStyle: React.CSSProperties = { 
-  flex: 1, 
-  position: 'relative', 
-  background: '#0f172a' 
-}
+const canvasContainerStyle: React.CSSProperties = {
+  flex: 1,
+  position: 'relative',
+  background: '#0f172a',
+  overflow: 'hidden',
+};
 
 const zoomControlsStyle: React.CSSProperties = {
-  position: 'absolute', 
-  top: '20px', 
-  left: '20px', 
-  zIndex: 50, 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '8px'
-}
+  position: 'absolute',
+  top: '20px',
+  left: '20px',
+  zIndex: 50,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+};
 
 const zoomBtnStyle: React.CSSProperties = {
-  width: '36px', 
-  height: '36px', 
-  borderRadius: '8px', 
-  background: '#1e293b', 
+  width: '36px',
+  height: '36px',
+  borderRadius: '8px',
+  background: '#1e293b',
   border: '1px solid #334155',
-  color: '#fff', 
-  fontSize: '18px', 
-  cursor: 'pointer', 
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'center', 
-  transition: '0.2s'
-}
+  color: '#fff',
+  fontSize: '18px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: '0.2s',
+};
 
-const zoomResetBtnStyle: React.CSSProperties = { 
-  ...zoomBtnStyle, 
-  color: '#38bdf8', 
-  fontSize: '20px' }
+const zoomResetBtnStyle: React.CSSProperties = {
+  ...zoomBtnStyle,
+  color: '#38bdf8',
+  fontSize: '20px',
+};
 
 const expandBtnStyle: React.CSSProperties = {
-  padding: '8px 14px', 
-  background: '#1e293b', 
-  border: '1px solid #334155', 
-  color: '#94a3b8', 
-  borderRadius: '8px', 
-  fontSize: '12px', 
-  cursor: 'pointer'
-}
+  padding: '8px 14px',
+  background: '#1e293b',
+  border: '1px solid #334155',
+  color: '#94a3b8',
+  borderRadius: '8px',
+  fontSize: '12px',
+  cursor: 'pointer',
+};
 
-/* 마우스 가이드 스타일 (Z-index 조정) */
+/* --- 가이드 스타일 --- */
 const guideWrapperStyle: React.CSSProperties = {
-  position: 'absolute', 
-  bottom: '20px', 
-  left: '20px', 
-  zIndex: 60, 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '8px'
-}
+  position: 'absolute',
+  bottom: '20px',
+  left: '20px',
+  zIndex: 60,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+};
 
 const guideToggleBtnStyle: React.CSSProperties = {
-  background: 'rgba(30, 41, 59, 0.8)', 
-  backdropFilter: 'blur(8px)', 
+  background: 'rgba(30, 41, 59, 0.8)',
+  backdropFilter: 'blur(8px)',
   border: '1px solid #334155',
-  color: '#38bdf8', 
-  padding: '8px 14px', 
-  borderRadius: '10px', 
-  fontSize: '12px', 
-  fontWeight: 600, 
-  cursor: 'pointer', 
-  textAlign: 'left', 
-  width: 'fit-content', 
-  transition: '0.2s'
-}
+  color: '#38bdf8',
+  padding: '8px 14px',
+  borderRadius: '10px',
+  fontSize: '12px',
+  fontWeight: 600,
+  cursor: 'pointer',
+  textAlign: 'left',
+  width: 'fit-content',
+  transition: '0.2s',
+};
 
 const guideContentStyle: React.CSSProperties = {
-  background: 'rgba(15, 23, 42, 0.85)', 
-  backdropFilter: 'blur(12px)', 
+  background: 'rgba(15, 23, 42, 0.85)',
+  backdropFilter: 'blur(12px)',
   border: '1px solid #1e293b',
-  borderRadius: '16px', 
-  padding: '16px', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '10px', 
-  width: '220px', 
-  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-}
+  borderRadius: '16px',
+  padding: '16px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '10px',
+  width: '220px',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+};
 
 const guideItemStyle: React.CSSProperties = {
-  fontSize: '12px', 
-  color: '#cbd5e1', 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '2px'
-}
+  fontSize: '12px',
+  color: '#cbd5e1',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '2px',
+};
 
-const guideKeyStyle: React.CSSProperties = { 
-  color: '#38bdf8', 
-  fontWeight: 700, 
-  fontSize: '11px', 
-  textTransform: 'uppercase' 
-}
+const guideKeyStyle: React.CSSProperties = {
+  color: '#38bdf8',
+  fontWeight: 700,
+  fontSize: '11px',
+  textTransform: 'uppercase',
+};
 
-const dividerStyle: React.CSSProperties = { 
+const dividerStyle: React.CSSProperties = {
   height: '1px',
-  background: '#334155', 
-  margin: '4px 0' }
+  background: '#334155',
+  margin: '4px 0',
+};
 
+const assemblyNoticeStyle: React.CSSProperties = {
+  width: '340px',
+  padding: '12px 16px',
+  background: 'rgba(15, 23, 42, 0.85)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid #1e293b',
+  borderRadius: '12px',
+  fontSize: '12px',
+  lineHeight: '1.6',
+  color: '#cbd5e1',
+  boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+};
+
+/* --- 그리드 (Grid) 스타일 --- */
 const singleGridStyle: React.CSSProperties = {
-  display: 'grid', 
-  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
-  gap: '20px', 
-  padding: '24px', 
-  overflowY: 'auto', 
-  height: '100%', 
-  background: '#0f172a'
-}
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+  gap: '20px',
+  padding: '24px',
+  background: '#0f172a',
+  height: '100%',
+  overflowY: 'auto',
+  alignContent: 'start',
+};
 
-const partCardStyle: React.CSSProperties = { 
-  background: '#1e293b', 
-  borderRadius: '20px', 
-  padding: '12px', 
-  cursor: 'pointer', 
-  border: '1px solid #334155' 
-}
+const partCardStyle: React.CSSProperties = {
+  background: '#1e293b',
+  borderRadius: '20px',
+  padding: '12px',
+  cursor: 'pointer',
+  border: '1px solid #334155',
+};
 
-const thumbWrapperStyle: React.CSSProperties = { 
-  position: 'relative', 
-  background: '#020617', 
-  borderRadius: '16px', 
-  overflow: 'hidden', 
-  marginBottom: '12px' 
-}
+const thumbWrapperStyle: React.CSSProperties = {
+  position: 'relative',
+  background: '#020617',
+  borderRadius: '16px',
+  overflow: 'hidden',
+  marginBottom: '12px',
+};
 
-const thumbStyle: React.CSSProperties = { 
-  width: '100%', 
-  aspectRatio: '1/1', 
-  objectFit: 'cover' 
-}
+const thumbStyle: React.CSSProperties = {
+  width: '100%',
+  aspectRatio: '1/1',
+  objectFit: 'cover',
+};
 
-const pathBadgeStyle: React.CSSProperties = { 
-  position: 'absolute', 
-  bottom: '8px', 
-  right: '8px', 
-  background: 'rgba(2, 6, 23, 0.7)', 
-  padding: '2px 8px', 
-  borderRadius: '6px', 
-  fontSize: '10px', 
-  color: '#38bdf8' 
-}
+const pathBadgeStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: '8px',
+  right: '8px',
+  background: 'rgba(2, 6, 23, 0.7)',
+  padding: '2px 8px',
+  borderRadius: '6px',
+  fontSize: '10px',
+  color: '#38bdf8',
+};
 
-const rightPanelStyle: React.CSSProperties = { 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: '20px', 
-  height: '100%', 
-  minHeight: 0, 
-  overflow: 'hidden' 
-}
+/* --- 우측 패널 (Right Panel) 스타일 --- */
+const rightPanelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '20px',
+  height: '100%',
+  minHeight: 0,
+  overflow: 'hidden',
+};
 
-const panelCardStyle: React.CSSProperties = { 
-  background: '#0f172a', 
-  borderRadius: '24px', 
-  padding: '24px', 
-  border: '1px solid #1e293b', 
-  boxSizing: 'border-box' 
-}
+const panelCardStyle: React.CSSProperties = {
+  background: '#0f172a',
+  borderRadius: '24px',
+  padding: '24px',
+  border: '1px solid #1e293b',
+  boxSizing: 'border-box',
+};
 
-const panelTitleStyle: React.CSSProperties = { 
-  fontSize: '16px', 
-  fontWeight: 600, 
-  marginBottom: 16, 
-  color: '#38bdf8' 
-}
+const panelTitleStyle: React.CSSProperties = {
+  fontSize: '16px',
+  fontWeight: 600,
+  marginBottom: '16px',
+  color: '#38bdf8',
+};
 
-const memoSectionStyle: React.CSSProperties = { 
-  ...panelCardStyle, 
-  flex: 1, 
-  display: 'flex', 
-  flexDirection: 'column', 
-  minHeight: 0, 
-  position: 'relative' 
-}
+const memoSectionStyle: React.CSSProperties = {
+  ...panelCardStyle,
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  position: 'relative',
+};
 
-const memoInnerWrapperStyle: React.CSSProperties = { 
-  flex: 1, 
-  display: 'flex', 
-  flexDirection: 'column', 
-  gap: 12, 
-  minHeight: 0 
-}
+const memoInnerWrapperStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  minHeight: 0,
+};
 
-const aiStatusStyle: React.CSSProperties = { 
-  display: 'flex', 
-  alignItems: 'center', 
-  gap: 12, 
-  padding: '16px', 
-  background: '#020617', 
-  borderRadius: '16px', 
-  border: '1px solid #1e293b' 
-}
+const aiStatusStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '16px',
+  background: '#020617',
+  borderRadius: '16px',
+  border: '1px solid #1e293b',
+};
 
-const statusDotStyle = (active: boolean): React.CSSProperties => ({ 
-  width: '8px', 
-  height: '8px', 
-  borderRadius: '50%', 
-  background: active ? '#10b981' : '#334155', 
-  boxShadow: active ? '0 0 12px #10b981' : 'none' 
-})
+const statusDotStyle = (active: boolean): React.CSSProperties => ({
+  width: '8px',
+  height: '8px',
+  borderRadius: '50%',
+  background: active ? '#10b981' : '#334155',
+  boxShadow: active ? '0 0 12px #10b981' : 'none',
+});
 
-const memoBoxStyle: React.CSSProperties = { 
-  flex: 1, 
-  width: '100%', 
-  background: '#0b1120', 
-  border: '1px solid #1e293b', 
-  borderRadius: '16px', 
-  padding: '16px', 
-  color: '#e2e8f0', 
-  fontSize: '14px', 
-  lineHeight: '1.5', 
-  resize: 'none', 
-  outline: 'none', 
-  boxSizing: 'border-box' 
-}
+const memoBoxStyle: React.CSSProperties = {
+  flex: 1,
+  width: '100%',
+  background: '#0b1120',
+  border: '1px solid #1e293b',
+  borderRadius: '16px',
+  padding: '16px',
+  color: '#e2e8f0',
+  fontSize: '14px',
+  lineHeight: '1.5',
+  resize: 'none',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
 
-const optionRowStyle: React.CSSProperties = { 
-  display: 'flex', 
-  alignItems: 'center', 
-  marginTop: '4px' 
-}
+const optionRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  marginTop: '4px',
+};
 
-const checkboxLabelStyle: React.CSSProperties = { 
-  display: 'flex', 
-  alignItems: 'center', 
-  gap: 8, 
-  fontSize: '14px', 
-  color: '#94a3b8', 
-  cursor: 'pointer' 
-}
+const checkboxLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  fontSize: '14px',
+  color: '#94a3b8',
+  cursor: 'pointer',
+};
+
+// ⭐ 중요: 컴포넌트 내에서 styles.guideWrapper 같은 식으로 부르고 있다면 아래 객체가 반드시 필요합니다.
+const styles = {
+  guideWrapper: guideWrapperStyle,
+  guideToggleBtn: guideToggleBtnStyle,
+  assemblyNotice: assemblyNoticeStyle,
+};
