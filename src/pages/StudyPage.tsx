@@ -5,6 +5,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import ViewerCanvas, { ViewerCanvasHandle } from '../components/viewer/ViewerCanvas'
 import { RobotArmModel } from '../components/viewer/objects/RobotArm/model'
 import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
+import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
 
 /* =============================================================
    1. MODELS DATA
@@ -13,6 +14,7 @@ import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
 const MODEL_DATA: Record<string, any> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
+  v4engine: V4EngineModel,
 }
 
 type StudyViewMode = 'single' | 'assembly' | 'simulator'
