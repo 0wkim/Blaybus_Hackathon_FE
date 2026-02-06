@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../providers/AuthProvider"
-import Header from '../components/Header'
 
 export default function DashboardPage() {
   const auth = useAuth();
@@ -18,37 +17,36 @@ export default function DashboardPage() {
 
   return (
     <div style={containerStyle}>
-      <Header />
       
       <main style={mainStyle}>
         <div style={titleSectionStyle}>
           <h1 style={mainTitleStyle}>PROJECT DASHBOARD</h1>
-          <p style={subTitleStyle}>Manage and access your engineering projects</p>
+          <p style={subTitleStyle}>엔지니어링 프로젝트 관리 및 학습 대시보드</p>
         </div>
 
         <div style={gridStyle}>
           <ProjectCard 
-            tag="STUDY" 
             title="Robot Arm" 
             desc="로봇팔 관절 구조 분석" 
+            imageSrc="../models/RobotArm/robotarm.png" 
             onClick={() => navigate("/study/robotarm")} 
           />
           <ProjectCard 
-            tag="PARTS" 
             title="Suspension" 
             desc="서스펜션 메커니즘 학습" 
+            imageSrc="../models/Suspension/suspension.png"
             onClick={() => navigate("/study/suspension")} 
           />
           <ProjectCard 
-            tag="STUDY" 
             title="V4 Engine" 
             desc="V4 실린더 엔진 시뮬레이션" 
+            imageSrc="../models/V4_Engine/v4engine.png"
             onClick={() => navigate("/study/v4engine")} 
           />
           <ProjectCard 
-            tag="STUDY" 
             title="Robot Gripper" 
             desc="로봇 집게 학습" 
+            imageSrc="../models/RobotGripper/robotgripper.png"
             onClick={() => navigate("/study/robotgripper")} 
           />
 
@@ -65,27 +63,30 @@ export default function DashboardPage() {
   )
 }
 
-function ProjectCard({ tag, title, desc, onClick }: any) {
+function ProjectCard({ title, desc, imageSrc, onClick }: any) {
   return (
     <div style={cardStyle}>
-      <div style={cardTagStyle}>
-        {tag}
+      {/* 상단 썸네일 영역 */}
+      <div style={thumbnailContainerStyle}>
+        {imageSrc ? (
+          <img src={imageSrc} alt={title} style={thumbnailImageStyle} />
+        ) : (
+          <div style={placeholderStyle}>No Image</div>
+        )}
       </div>
-      <h3 style={cardTitleStyle}>
-        {title}
-      </h3>
-      <p style={cardDescStyle}>
-        {desc}
-      </p>
-      <button onClick={onClick} style={resumeBtnStyle}>
-        Resume
-      </button>
+      
+      {/* 하단 텍스트 영역 */}
+      <div style={cardContentStyle}>
+        <h3 style={cardTitleStyle}>{title}</h3>
+        <p style={cardDescStyle}>{desc}</p>
+        <button onClick={onClick} style={resumeBtnStyle}>Resume</button>
+      </div>
     </div>
   )
 }
 
 /* =============================================================
-   STYLES (INDIVIDUAL CONSTS)
+   STYLES (REFINED & READABLE)
    ============================================================= */
 
 const containerStyle: React.CSSProperties = {
@@ -95,6 +96,7 @@ const containerStyle: React.CSSProperties = {
   background: 'radial-gradient(circle at center, #1e293b 0%, #080c14 100%)',
   color: 'white',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  paddingTop: '60px', // 헤더 높이만큼 여백 추가 [필수]
 };
 
 const mainStyle: React.CSSProperties = {
@@ -129,24 +131,46 @@ const gridStyle: React.CSSProperties = {
   gap: '24px',
 };
 
+/* --- 카드 디자인 --- */
 const cardStyle: React.CSSProperties = {
   background: 'rgba(30, 41, 59, 0.3)',
   border: '1px solid rgba(255, 255, 255, 0.05)',
   borderRadius: '16px',
-  padding: '32px 24px',
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden', // 이미지가 둥근 모서리에 맞게 잘리도록 설정
+  backdropFilter: 'blur(10px)',
+};
+
+const thumbnailContainerStyle: React.CSSProperties = {
+  width: '100%',
+  height: '180px',
+  background: '#0f172a',
+  overflow: 'hidden',
+};
+
+const thumbnailImageStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover', // 컨테이너에 꽉 차게 조절
+};
+
+const placeholderStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#475569',
+  fontSize: '14px',
+};
+
+const cardContentStyle: React.CSSProperties = {
+  padding: '24px',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   textAlign: 'center',
-  backdropFilter: 'blur(10px)',
-};
-
-const cardTagStyle: React.CSSProperties = {
-  fontSize: '12px',
-  fontWeight: 700,
-  letterSpacing: '1px',
-  marginBottom: '20px',
-  color: '#fff',
 };
 
 const cardTitleStyle: React.CSSProperties = {
@@ -175,6 +199,7 @@ const resumeBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
+/* --- 새 프로젝트 추가 카드 --- */
 const addCardStyle: React.CSSProperties = {
   border: '1px dashed rgba(255, 255, 255, 0.15)',
   borderRadius: '16px',
@@ -182,8 +207,10 @@ const addCardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
+  justifyContent: 'center',
   textAlign: 'center',
   cursor: 'pointer',
+  minHeight: '320px', // 일반 프로젝트 카드와 높이를 맞춤
 };
 
 const plusCircleStyle: React.CSSProperties = {

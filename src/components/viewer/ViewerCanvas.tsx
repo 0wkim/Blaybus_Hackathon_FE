@@ -9,11 +9,11 @@ import {
   useImperativeHandle,
 } from 'react'
 import * as THREE from 'three'
-import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import type { ModelDef } from '@/viewer/types'
 
-// [수정] 외부에서 호출 가능한 함수 타입 정의 (getCameraState 추가)
 export type ViewerCanvasHandle = {
   zoomIn: () => void
   zoomOut: () => void
@@ -33,7 +33,6 @@ const ViewerCanvas = forwardRef<
     onSelectPart: (id: string | null) => void
     isExpanded: boolean
     mode: string
-    // [수정] 초기 카메라 상태 Props 추가
     initialCameraState?: {
       position: [number, number, number]
       target: [number, number, number]
@@ -47,6 +46,7 @@ const ViewerCanvas = forwardRef<
     camera: THREE.PerspectiveCamera
     renderer: THREE.WebGLRenderer
     controls: OrbitControls
+    transformControls: TransformControls
     rafId: number
   } | null>(null)
 
@@ -57,12 +57,8 @@ const ViewerCanvas = forwardRef<
   const draggingRef = useRef(false)
   const lastYRef = useRef(0)
 
-  const materialSnapshot = useMemo(
-    () => new WeakMap<THREE.Material, any>(),
-    []
-  )
+  const materialSnapshot = useMemo(() => new WeakMap<THREE.Material, any>(), [])
 
-  /* ================= Ref API ================= */
   useImperativeHandle(ref, () => ({
     zoomIn() {
       if (!refs.current) return
@@ -72,7 +68,6 @@ const ViewerCanvas = forwardRef<
       camera.position.addScaledVector(dir, 0.25)
       controls.update()
     },
-
     zoomOut() {
       if (!refs.current) return
       const { camera, controls } = refs.current
@@ -81,16 +76,22 @@ const ViewerCanvas = forwardRef<
       camera.position.addScaledVector(dir, -0.25)
       controls.update()
     },
-
     resetCamera() {
       if (!refs.current) return
-      const { camera, controls } = refs.current
+      const { camera, controls, transformControls } = refs.current
+      
       camera.position.set(2.0, 1.5, 2.2)
       controls.target.set(0, 0.6, 0)
       controls.update()
-    },
 
-    // [수정] 현재 카메라 상태 반환 구현
+      Object.values(partsRef.current).forEach((p) => {
+        p.root.position.copy(p.assembled)
+      })
+      
+      transformControls.detach()
+      onSelectPart(null)
+      explodeRef.current = 0
+    },
     getCameraState() {
       if (!refs.current) return undefined
       const { camera, controls } = refs.current
@@ -101,29 +102,20 @@ const ViewerCanvas = forwardRef<
     },
   }))
 
-
-  /* ================= Resize ================= */
   useEffect(() => {
     const handleResize = () => {
       if (!mountRef.current || !refs.current) return
       const { camera, renderer } = refs.current
-      camera.aspect =
-        mountRef.current.clientWidth / mountRef.current.clientHeight
+      camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight
       camera.updateProjectionMatrix()
-      renderer.setSize(
-        mountRef.current.clientWidth,
-        mountRef.current.clientHeight
-      )
+      renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight)
     }
-
     const ro = new ResizeObserver(handleResize)
     if (mountRef.current) ro.observe(mountRef.current)
     handleResize()
-
     return () => ro.disconnect()
   }, [isExpanded])
 
-  /* ================= Three Init ================= */
   useLayoutEffect(() => {
     if (!mountRef.current) return
 
@@ -134,8 +126,6 @@ const ViewerCanvas = forwardRef<
     scene.background = new THREE.Color(0x0f172a)
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100)
-    
-    // [수정] 초기 카메라 위치 설정 (저장된 값 or 기본값)
     if (initialCameraState) {
       camera.position.set(...initialCameraState.position)
     } else {
@@ -149,15 +139,27 @@ const ViewerCanvas = forwardRef<
 
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
-    
-    // [수정] 초기 타겟 설정 (저장된 값 or 기본값)
     if (initialCameraState) {
       controls.target.set(...initialCameraState.target)
     } else {
       controls.target.set(0, 0.6, 0)
     }
 
-    refs.current = { scene, camera, renderer, controls, rafId: 0 }
+    // [개선] TransformControls 생성 및 설정
+    const transformControls = new TransformControls(camera, renderer.domElement)
+    transformControls.size = 0.8
+
+    transformControls.setMode('translate')
+    transformControls.setSpace('world')
+
+    scene.add(transformControls)
+
+    // 마우스가 기즈모 위에 있을 때 OrbitControls 비활성화
+    transformControls.addEventListener('dragging-changed', (e) => {
+      controls.enabled = !e.value
+    })
+
+    refs.current = { scene, camera, renderer, controls, transformControls, rafId: 0 }
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.8))
     const dir = new THREE.DirectionalLight(0xffffff, 1)
@@ -170,10 +172,7 @@ const ViewerCanvas = forwardRef<
       loader.load(p.path, (gltf: GLTF) => {
         const root = gltf.scene
         const wrapper = new THREE.Group()
-
-        if (p.rotation)
-          root.rotation.set(p.rotation.x, p.rotation.y, p.rotation.z)
-
+        if (p.rotation) root.rotation.set(p.rotation.x, p.rotation.y, p.rotation.z)
         wrapper.add(root)
         wrapper.position.set(p.assembled.x, p.assembled.y, p.assembled.z)
         scene.add(wrapper)
@@ -182,11 +181,7 @@ const ViewerCanvas = forwardRef<
           if (!obj.isMesh) return
           obj.userData.partId = p.id
           pickablesRef.current.push(obj)
-
-          const mats = Array.isArray(obj.material)
-            ? obj.material
-            : [obj.material]
-
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
           mats.forEach((m: any) => {
             if (!materialSnapshot.has(m)) {
               materialSnapshot.set(m, {
@@ -200,23 +195,15 @@ const ViewerCanvas = forwardRef<
 
         partsRef.current[p.id] = {
           root: wrapper,
-          assembled: new THREE.Vector3(
-            p.assembled.x,
-            p.assembled.y,
-            p.assembled.z
-          ),
-          exploded: new THREE.Vector3(
-            p.exploded.x,
-            p.exploded.y,
-            p.exploded.z
-          ),
+          assembled: new THREE.Vector3(p.assembled.x, p.assembled.y, p.assembled.z),
+          exploded: new THREE.Vector3(p.exploded.x, p.exploded.y, p.exploded.z),
         }
       })
     })
 
-    /* ===== Mouse ===== */
     const onPointerDown = (e: PointerEvent) => {
-      if (mode === 'assembly') return
+      // 기즈모 조작 중이면 무시
+      if (mode === 'edit') return
       if (e.shiftKey) {
         draggingRef.current = true
         lastYRef.current = e.clientY
@@ -225,7 +212,7 @@ const ViewerCanvas = forwardRef<
     }
 
     const onPointerMove = (e: PointerEvent) => {
-      if (!draggingRef.current || mode === 'assembly') return
+      if (!draggingRef.current || mode !== 'simulator') return
       explodeRef.current = THREE.MathUtils.clamp(
         explodeRef.current + (lastYRef.current - e.clientY) * 0.005,
         0,
@@ -239,11 +226,13 @@ const ViewerCanvas = forwardRef<
 
     const onPointerUp = () => {
       draggingRef.current = false
-      controls.enabled = true
+      if (!transformControls.dragging) controls.enabled = true
     }
 
     const onClick = (e: MouseEvent) => {
-      if (draggingRef.current || !refs.current) return
+      // 기즈모 조작 중이면 클릭 로직 건너뜀
+      if (transformControls.dragging || draggingRef.current || !refs.current) return
+      
       const rect = renderer.domElement.getBoundingClientRect()
       const raycaster = new THREE.Raycaster()
       raycaster.setFromCamera(
@@ -254,7 +243,13 @@ const ViewerCanvas = forwardRef<
         camera
       )
       const hits = raycaster.intersectObjects(pickablesRef.current, true)
-      onSelectPart(hits.length ? hits[0].object.userData.partId : null)
+      
+      if (hits.length > 0) {
+        onSelectPart(hits[0].object.userData.partId)
+      } else {
+        // 빈 공간 클릭 시 기즈모 해제 (단, 드래그 중이 아닐 때만)
+        onSelectPart(null)
+      }
     }
 
     const dom = renderer.domElement
@@ -282,40 +277,48 @@ const ViewerCanvas = forwardRef<
       mountRef.current?.removeChild(dom)
       refs.current = null
     }
-  }, [JSON.stringify(model), mode])
+  }, [JSON.stringify(model), mode]) // mode가 바뀔 때 리스너를 다시 설정하여 충돌 방지
+
+  /* ================= 기즈모 부착 로직  ================= */
+  useEffect(() => {
+    if (!refs.current) return
+    const { transformControls } = refs.current
+
+    if (mode === 'edit' && selectedPartId && partsRef.current[selectedPartId]) {
+      const target = partsRef.current[selectedPartId].root
+      // 부품 중심점 계산 (기즈모가 멀리 생기는 현상 방지)
+      const box = new THREE.Box3().setFromObject(target)
+      const center = new THREE.Vector3()
+      box.getCenter(center)
+      
+      transformControls.attach(target)
+    } else {
+      transformControls.detach()
+    }
+  }, [selectedPartId, mode])
 
   /* ================= Ghost ================= */
   useEffect(() => {
     Object.entries(partsRef.current).forEach(([id, p]) => {
       p.root.traverse((obj: any) => {
         if (!obj.isMesh) return
-        const mats = Array.isArray(obj.material)
-          ? obj.material
-          : [obj.material]
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
         mats.forEach((m: any) => {
           const snap = materialSnapshot.get(m)
           if (!snap) return
-          const isGhostActive =
-            mode !== 'assembly' && ghost && selectedPartId && id !== selectedPartId
+          const isGhostActive = mode !== 'assembly' && ghost && selectedPartId && id !== selectedPartId
           m.transparent = isGhostActive ? true : snap.transparent
           m.opacity = isGhostActive ? 0.15 : snap.opacity
           if (m.emissive)
             m.emissive.set(
-              id === selectedPartId
-                ? 0x38bdf8
-                : snap.emissive || new THREE.Color(0, 0, 0)
+              id === selectedPartId ? 0x38bdf8 : snap.emissive || new THREE.Color(0, 0, 0)
             )
         })
       })
     })
   }, [ghost, selectedPartId, mode])
 
-  return (
-    <div
-      ref={mountRef}
-      style={{ width: '100%', height: '100%', overflow: 'hidden' }}
-    />
-  )
+  return <div ref={mountRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} />
 })
 
 ViewerCanvas.displayName = 'ViewerCanvas'
