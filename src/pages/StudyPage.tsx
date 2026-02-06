@@ -23,7 +23,9 @@ export default function StudyPage() {
   const { modelId } = useParams<{ modelId: string }>()
   const viewerRef = useRef<ViewerCanvasHandle>(null)
 
-  const currentModel = (modelId && MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel
+  const currentModel = useMemo(() => {
+    return (modelId && MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel
+  }, [modelId])
   
   const [viewMode, setViewMode] = useState<StudyViewMode>('simulator')
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
@@ -37,8 +39,6 @@ export default function StudyPage() {
 
   const [memoText, setMemoText] = useState('')
   const [isEditing, setIsEditing] = useState(true)
-  
-  // 메모장 확장/축소 상태
   const [isMemoOpen, setIsMemoOpen] = useState(true)
 
   useEffect(() => {
@@ -48,52 +48,25 @@ export default function StudyPage() {
 
   useEffect(() => {
     document.body.style.margin = '0'
-    document.body.style.background = 'radial-gradient(circle at center, #1e293b 0%, #080c14 100%)'
+    document.body.style.backgroundColor = '#080c14' 
   }, [])
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 50); 
-    return () => clearTimeout(timer);
-  }, [isExpanded]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof Element && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
-
       if (e.key.toLowerCase() === 'f' && !e.repeat) {
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(err => console.error(err));
-          setIsExpanded(true);
-        } else {
-          document.exitFullscreen();
-          setIsExpanded(false);
-        }
+        setIsExpanded(prev => !prev);
       }
       if (e.key === 'Escape') {
         setIsExpanded(false);
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
-    const onFsChange = () => setIsExpanded(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFsChange);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('fullscreenchange', onFsChange);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const storageKey = `camera_state_${modelId}`;
-  const savedCameraState = useMemo(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : undefined;
-    } catch (e) { return undefined; }
-  }, [storageKey]);
-
+  
   useEffect(() => {
     if (viewMode === 'single') return;
     const saveInterval = setInterval(() => {
@@ -110,20 +83,10 @@ export default function StudyPage() {
   return (
     <div style={containerStyle}>
       <style>{`
-        #part-list-sidebar::-webkit-scrollbar {
-          width: 6px;
-        }
-        #part-list-sidebar::-webkit-scrollbar-track {
-          background: rgba(15, 23, 42, 0.1);
-          border-radius: 10px;
-        }
-        #part-list-sidebar::-webkit-scrollbar-thumb {
-          background: rgba(56, 189, 248, 0.3);
-          border-radius: 10px;
-        }
-        #part-list-sidebar::-webkit-scrollbar-thumb:hover {
-          background: rgba(56, 189, 248, 0.6);
-        }
+        #part-list-sidebar::-webkit-scrollbar { width: 6px; }
+        #part-list-sidebar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.1); border-radius: 10px; }
+        #part-list-sidebar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+        #part-list-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
       `}</style>
 
       <Header />
@@ -160,7 +123,7 @@ export default function StudyPage() {
                   <div style={assemblyNoticeStyle}>
                     <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '8px' }}>ⓘ INFO</span>
                     조립도 모드에서는 모델의 전체 구조를 열람만 할 수 있습니다. <br/>
-                    분해 및 조립 시뮬레이션은 <span style={{ floodColor: '#38bdf8' }}>'시뮬레이터'</span> 탭을 이용해 주세요.
+                    분해 및 조립 시뮬레이션은 <span style={{ color: '#38bdf8' }}>'시뮬레이터'</span> 탭을 이용해 주세요.
                   </div>
                 )}
               </div>
@@ -199,8 +162,8 @@ export default function StudyPage() {
                   <div style={guideContentStyle}>
                     <div style={guideSectionTitleStyle}>🛠️ 편집 모드 조작</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><span>👆 클릭 : <span style={highlightTextStyle}>부품 선택</span></span></div>
-                      <div style={guideRowStyle}><span>↕ 화살표 드래그 : <span style={highlightTextStyle}>좌표 이동</span></span></div>
+                      <div style={guideRowStyle}><span>🖱️ 좌클릭 : <span style={highlightTextStyle}>부품 선택</span></span></div>
+                      <div style={guideRowStyle}><span>🖱️ 드래그 : <span style={highlightTextStyle}>부품 이동</span></span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>빈 공간 클릭 시 선택 해제</div>
@@ -224,7 +187,16 @@ export default function StudyPage() {
                     ))}
                 </div>
                 <div style={singleViewerAreaStyle}>
-                    <ViewerCanvas ref={viewerRef} model={currentModel} ghost={true} selectedPartId={activeSinglePartId} onSelectPart={setActiveSinglePartId} isExpanded={isExpanded} mode={'single'} />
+                    <ViewerCanvas 
+                      key="viewer-single" // Key를 주어 탭 이동 시 확실히 재부팅
+                      ref={viewerRef} 
+                      model={currentModel} 
+                      ghost={false} 
+                      selectedPartId={activeSinglePartId} 
+                      onSelectPart={setActiveSinglePartId} 
+                      isExpanded={isExpanded} 
+                      mode={'single'} 
+                    />
                     <div style={centerPartLabelStyle}>{activeSinglePartId || "Select a Part"}</div>
                 </div>
                 <div style={singleInfoPanelStyle}>
@@ -238,9 +210,10 @@ export default function StudyPage() {
               </div>
             ) : (
               <ViewerCanvas
+                key="viewer-multi" // Key를 분리하여 단일 모드와 섞이지 않게 함
                 ref={viewerRef}
                 model={currentModel}
-                ghost={viewMode === 'assembly' ? false : ghost}
+                ghost={ghost} 
                 selectedPartId={selectedPartId}
                 onSelectPart={setSelectedPartId}
                 isExpanded={isExpanded}
@@ -252,14 +225,7 @@ export default function StudyPage() {
 
         {!isExpanded && (
           <aside style={rightPanelStyle}>
-            {/* 1. AI Assistant 섹션 */}
-            <section style={{ 
-              ...panelCardStyle, 
-              flex: isMemoOpen ? '0 0 auto' : 1,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              display: 'flex',
-              flexDirection: 'column'
-            }}>
+            <section style={panelCardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
                 <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
@@ -271,8 +237,7 @@ export default function StudyPage() {
                     : '부품을 선택하면 분석이 시작됩니다.'}
                 </span>
               </div>
-
-              {viewMode === 'simulator' && (
+              {viewMode !== 'single' && (
                 <div style={{ ...optionRowStyle, marginTop: '16px' }}>
                   <label style={checkboxLabelStyle}>
                     <input type="checkbox" checked={ghost} onChange={(e) => setGhost(e.target.checked)} style={{ accentColor: '#38bdf8' }} /> 
@@ -282,42 +247,13 @@ export default function StudyPage() {
               )}
             </section>
 
-            {/* 2. Memo 섹션 (레이아웃 수정 버전) */}
-            <section style={{ 
-              ...memoSectionStyle, 
-              flex: isMemoOpen ? 1 : '0 0 auto',
-              maxHeight: isMemoOpen ? 'none' : '56px',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              overflow: 'hidden',
-              position: 'relative'
-            }}>
+            <section style={{ ...memoSectionStyle, flex: isMemoOpen ? 1 : '0 0 auto', maxHeight: isMemoOpen ? 'none' : '56px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMemoOpen ? '16px' : 0 }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>Memo</h3>
-                
-                {/* [수정] +, - 버튼을 우측 상단으로 이동 */}
-                <button 
-                  onClick={() => setIsMemoOpen(!isMemoOpen)}
-                  style={{
-                    background: 'rgba(56, 189, 248, 0.1)',
-                    border: '1px solid rgba(56, 189, 248, 0.2)',
-                    color: '#38bdf8',
-                    borderRadius: '6px',
-                    width: '28px',
-                    height: '28px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '18px',
-                    padding: 0,
-                    transition: 'all 0.2s'
-                  }}
-                  title={isMemoOpen ? "축소" : "확대"}
-                >
+                <button onClick={() => setIsMemoOpen(!isMemoOpen)} style={memoToggleBtnStyle}>
                   {isMemoOpen ? '−' : '＋'}
                 </button>
               </div>
-
               {isMemoOpen && (
                 <div style={memoInnerWrapperStyle}>
                   <textarea 
@@ -327,18 +263,8 @@ export default function StudyPage() {
                     onChange={(e) => setMemoText(e.target.value)}
                     readOnly={!isEditing}
                   />
-                  
-                  {/* [수정] 저장/수정 버튼을 하단 중앙에 배치 */}
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                    <button 
-                      onClick={() => setIsEditing(!isEditing)} 
-                      style={{
-                        ...memoSaveBtnStyle(isEditing),
-                        width: '120px', // 버튼 너비 고정으로 안정감 부여
-                        padding: '10px 0',
-                        fontSize: '13px'
-                      }}
-                    >
+                    <button onClick={() => setIsEditing(!isEditing)} style={memoSaveBtnStyle(isEditing)}>
                       {isEditing ? '저장하기' : '수정하기'}
                     </button>
                   </div>
@@ -352,7 +278,9 @@ export default function StudyPage() {
   )
 }
 
-// ... (이하 스타일 정의는 이전과 동일하나 가독성을 위해 생략 없이 유지함이 좋습니다)
+// ---------------------------------------------------------
+// 스타일 정의 (가시성을 위해 줄바꿈 보강)
+// ---------------------------------------------------------
 
 const containerStyle: React.CSSProperties = {
   height: '100vh',
@@ -397,6 +325,7 @@ const canvasContainerStyle: React.CSSProperties = {
   flex: 1,
   position: 'relative',
   overflow: 'hidden',
+  background: '#0f172a', 
 };
 
 const singleModeContainerStyle: React.CSSProperties = {
@@ -586,7 +515,26 @@ const memoSaveBtnStyle = (isEditing: boolean): React.CSSProperties => ({
   border: isEditing ? 'none' : '1px solid #334155',
   color: '#fff',
   transition: 'all 0.2s',
+  width: '120px',
+  padding: '10px 0',
+  fontSize: '13px'
 });
+
+const memoToggleBtnStyle: React.CSSProperties = {
+  background: 'rgba(56, 189, 248, 0.1)',
+  border: '1px solid rgba(56, 189, 248, 0.2)',
+  color: '#38bdf8',
+  borderRadius: '6px',
+  width: '28px',
+  height: '28px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  fontSize: '18px',
+  padding: 0,
+  transition: 'all 0.2s'
+};
 
 const optionRowStyle: React.CSSProperties = {
   display: 'flex',
