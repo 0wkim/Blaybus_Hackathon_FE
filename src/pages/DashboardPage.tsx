@@ -47,8 +47,9 @@ export default function DashboardPage() {
           />
           <ProjectCard 
             tag="STUDY" 
-            title="Advanced Course" 
-            desc="71 Modules covering essential engineering topics" 
+            title="Robot Gripper" 
+            desc="로봇 집게 학습" 
+            onClick={() => navigate("/study/robotgripper")} 
           />
 
           {[1, 2, 3, 4].map((i) => (

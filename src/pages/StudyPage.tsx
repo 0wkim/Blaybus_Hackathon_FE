@@ -6,12 +6,14 @@ import ViewerCanvas, { ViewerCanvasHandle } from '../components/viewer/ViewerCan
 import { RobotArmModel } from '../components/viewer/objects/RobotArm/model'
 import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
 import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
+import { RobotGripperModel } from '../components/viewer/objects/RobotGripper/model'
 import Header from '../components/Header'
 
 const MODEL_DATA: Record<string, any> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
   v4engine: V4EngineModel,
+  robotgripper: RobotGripperModel,
 }
 
 type StudyViewMode = 'single' | 'assembly' | 'simulator'
