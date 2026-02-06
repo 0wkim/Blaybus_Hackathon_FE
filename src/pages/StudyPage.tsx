@@ -37,6 +37,9 @@ export default function StudyPage() {
 
   const [memoText, setMemoText] = useState('')
   const [isEditing, setIsEditing] = useState(true)
+  
+  // 메모장 확장/축소 상태
+  const [isMemoOpen, setIsMemoOpen] = useState(true)
 
   useEffect(() => {
     setSelectedPartId(null);
@@ -197,7 +200,7 @@ export default function StudyPage() {
                     <div style={guideSectionTitleStyle}>🛠️ 편집 모드 조작</div>
                     <div style={guideItemStyle}>
                       <div style={guideRowStyle}><span>👆 클릭 : <span style={highlightTextStyle}>부품 선택</span></span></div>
-                      <div style={guideRowStyle}><span>🖱️ 드래그 : <span style={highlightTextStyle}>부품 이동</span></span></div>
+                      <div style={guideRowStyle}><span>↕ 화살표 드래그 : <span style={highlightTextStyle}>좌표 이동</span></span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>빈 공간 클릭 시 선택 해제</div>
@@ -249,7 +252,14 @@ export default function StudyPage() {
 
         {!isExpanded && (
           <aside style={rightPanelStyle}>
-            <section style={panelCardStyle}>
+            {/* 1. AI Assistant 섹션 */}
+            <section style={{ 
+              ...panelCardStyle, 
+              flex: isMemoOpen ? '0 0 auto' : 1,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
                 <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
@@ -261,34 +271,79 @@ export default function StudyPage() {
                     : '부품을 선택하면 분석이 시작됩니다.'}
                 </span>
               </div>
+
+              {viewMode === 'simulator' && (
+                <div style={{ ...optionRowStyle, marginTop: '16px' }}>
+                  <label style={checkboxLabelStyle}>
+                    <input type="checkbox" checked={ghost} onChange={(e) => setGhost(e.target.checked)} style={{ accentColor: '#38bdf8' }} /> 
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Ghost Mode 활성화</span>
+                  </label>
+                </div>
+              )}
             </section>
 
-            <section style={memoSectionStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            {/* 2. Memo 섹션 (레이아웃 수정 버전) */}
+            <section style={{ 
+              ...memoSectionStyle, 
+              flex: isMemoOpen ? 1 : '0 0 auto',
+              maxHeight: isMemoOpen ? 'none' : '56px',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMemoOpen ? '16px' : 0 }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>Memo</h3>
+                
+                {/* [수정] +, - 버튼을 우측 상단으로 이동 */}
                 <button 
-                  onClick={() => setIsEditing(!isEditing)} 
-                  style={memoSaveBtnStyle(isEditing)}
+                  onClick={() => setIsMemoOpen(!isMemoOpen)}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.1)',
+                    border: '1px solid rgba(56, 189, 248, 0.2)',
+                    color: '#38bdf8',
+                    borderRadius: '6px',
+                    width: '28px',
+                    height: '28px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '18px',
+                    padding: 0,
+                    transition: 'all 0.2s'
+                  }}
+                  title={isMemoOpen ? "축소" : "확대"}
                 >
-                  {isEditing ? '저장하기' : '수정하기'}
+                  {isMemoOpen ? '−' : '＋'}
                 </button>
               </div>
-              <div style={memoInnerWrapperStyle}>
-                <textarea 
-                  style={memoBoxStyle(isEditing)} 
-                  placeholder="메모장에 기록하세요." 
-                  value={memoText}
-                  onChange={(e) => setMemoText(e.target.value)}
-                  readOnly={!isEditing}
-                />
-                {viewMode === 'simulator' && (
-                  <div style={optionRowStyle}>
-                    <label style={checkboxLabelStyle}>
-                      <input type="checkbox" checked={ghost} onChange={(e) => setGhost(e.target.checked)} style={{ accentColor: '#3b82f6' }} /> Ghost Mode
-                    </label>
+
+              {isMemoOpen && (
+                <div style={memoInnerWrapperStyle}>
+                  <textarea 
+                    style={memoBoxStyle(isEditing)} 
+                    placeholder="학습 내용을 기록하세요." 
+                    value={memoText}
+                    onChange={(e) => setMemoText(e.target.value)}
+                    readOnly={!isEditing}
+                  />
+                  
+                  {/* [수정] 저장/수정 버튼을 하단 중앙에 배치 */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
+                    <button 
+                      onClick={() => setIsEditing(!isEditing)} 
+                      style={{
+                        ...memoSaveBtnStyle(isEditing),
+                        width: '120px', // 버튼 너비 고정으로 안정감 부여
+                        padding: '10px 0',
+                        fontSize: '13px'
+                      }}
+                    >
+                      {isEditing ? '저장하기' : '수정하기'}
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </section>
           </aside>
         )}
@@ -297,6 +352,7 @@ export default function StudyPage() {
   )
 }
 
+// ... (이하 스타일 정의는 이전과 동일하나 가독성을 위해 생략 없이 유지함이 좋습니다)
 
 const containerStyle: React.CSSProperties = {
   height: '100vh',
@@ -523,12 +579,10 @@ const memoBoxStyle = (isEditing: boolean): React.CSSProperties => ({
 });
 
 const memoSaveBtnStyle = (isEditing: boolean): React.CSSProperties => ({
-  padding: '6px 12px',
-  borderRadius: '8px',
-  fontSize: '12px',
+  borderRadius: '10px',
   fontWeight: 600,
   cursor: 'pointer',
-  background: isEditing ? '#3b82f6' : 'transparent',
+  background: isEditing ? '#3b82f6' : 'rgba(30, 41, 59, 0.5)',
   border: isEditing ? 'none' : '1px solid #334155',
   color: '#fff',
   transition: 'all 0.2s',
