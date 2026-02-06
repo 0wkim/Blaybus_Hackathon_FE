@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import api from "../api/axios";
 
 interface AuthContextType {
@@ -11,7 +11,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // 1. 초기 상태를 결정할 때 localStorage를 즉시 확인 (새로고침 시 false 방지)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem("isLoggedIn") === "true";
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   // ✅ 로그인
@@ -23,7 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      // 로그인 성공 = 쿠키 발급 완료
+      // 2. 로그인 성공 시 브라우저 저장소에 기록
+      localStorage.setItem("isLoggedIn", "true");
       setIsAuthenticated(true);
       return true;
     } catch (error) {
@@ -41,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout Error:", error);
     } finally {
+      // 3. 로그아웃 시 기록 삭제
+      localStorage.removeItem("isLoggedIn");
       setIsAuthenticated(false);
     }
   };
