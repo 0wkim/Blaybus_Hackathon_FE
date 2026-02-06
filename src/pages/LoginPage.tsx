@@ -1,10 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../providers/AuthProvider";
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth(); // isLoading도 가져와서 중복 클릭 방지
   const navigate = useNavigate();
+
+  // 1. 입력값 상태 관리
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   useEffect(() => {
     document.body.style.margin = '0';
@@ -12,8 +16,28 @@ const LoginPage = () => {
   }, []);
 
   const handleLogin = async () => {
-    await login();
-    navigate("/dashboard");
+    // 유효성 검사
+    if (!email || !password) {
+      alert("아이디와 비밀번호를 모두 입력해주세요.");
+      return;
+    }
+
+    // 2. AuthProvider의 login 함수 호출 (성공 여부 반환)
+    const success = await login(email, password);
+    
+    // 3. 성공 시 대시보드 이동
+    if (success) {
+      navigate("/dashboard");
+    } else {
+      alert("로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.");
+    }
+  };
+
+  // 엔터키 입력 시 로그인 실행
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
   };
 
   return (
@@ -36,6 +60,8 @@ const LoginPage = () => {
             type="email" 
             placeholder="example@email.com" 
             style={styles.input} 
+            value={email} // 상태 연결
+            onChange={(e) => setEmail(e.target.value)} // 입력 감지
           />
         </div>
 
@@ -46,12 +72,23 @@ const LoginPage = () => {
             type="password" 
             placeholder="••••••••" 
             style={styles.input} 
+            value={password} // 상태 연결
+            onChange={(e) => setPassword(e.target.value)} // 입력 감지
+            onKeyDown={handleKeyDown} // 엔터키 이벤트 연결
           />
         </div>
 
         {/* 로그인 버튼 */}
-        <button onClick={handleLogin} style={styles.loginButton}>
-          로그인 <span style={styles.arrow}>→</span>
+        <button 
+          onClick={handleLogin} 
+          style={{...styles.loginButton, opacity: isLoading ? 0.7 : 1}} 
+          disabled={isLoading} // 로딩 중 클릭 방지
+        >
+          {isLoading ? "로그인 중..." : (
+            <>
+              로그인 <span style={styles.arrow}>→</span>
+            </>
+          )}
         </button>
 
         {/* 하단 링크 */}

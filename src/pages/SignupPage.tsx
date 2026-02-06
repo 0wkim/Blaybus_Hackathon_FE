@@ -1,13 +1,58 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/axios'; // 생성한 axios 인스턴스 import
 
 const SignupPage = () => {
   const navigate = useNavigate();
+
+  // 1. 입력값 상태 관리
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     document.body.style.margin = '0';
     document.body.style.padding = '0';
   }, []);
+
+  const handleSignup = async () => {
+    // 2. 유효성 검사
+    if (!name || !email || !password || !confirmPassword) {
+      alert("모든 필드를 입력해주세요.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 3. API 요청 (백엔드 명세: username, email, password)
+      // 화면의 '이름' -> username, '아이디(이메일)' -> email 로 매핑
+      const response = await api.post('/api/users/signup', {
+        username: name, 
+        email: email,
+        password: password
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        alert("회원가입이 완료되었습니다. 로그인 페이지로 이동합니다.");
+        navigate('/login');
+      }
+    } catch (error: any) {
+      console.error("Signup Error:", error);
+      // 에러 메시지 처리 (백엔드에서 보내주는 메시지가 있다면 표시)
+      const errorMessage = error.response?.data?.message || "회원가입 중 오류가 발생했습니다.";
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div style={styles.container}>
@@ -25,30 +70,62 @@ const SignupPage = () => {
         {/* 이름 입력 */}
         <div style={styles.inputGroup}>
           <label style={styles.label}>이름</label>
-          <input type="text" placeholder="홍길동" style={styles.input} />
+          <input 
+            type="text" 
+            placeholder="홍길동" 
+            style={styles.input}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
         </div>
 
         {/* 이메일 입력 */}
         <div style={styles.inputGroup}>
           <label style={styles.label}>아이디 (이메일)</label>
-          <input type="email" placeholder="example@email.com" style={styles.input} />
+          <input 
+            type="email" 
+            placeholder="example@email.com" 
+            style={styles.input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
 
         {/* 비밀번호 입력 */}
         <div style={styles.inputGroup}>
           <label style={styles.label}>비밀번호</label>
-          <input type="password" placeholder="••••••••" style={styles.input} />
+          <input 
+            type="password" 
+            placeholder="••••••••" 
+            style={styles.input}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
 
         {/* 비밀번호 확인 입력 */}
         <div style={styles.inputGroup}>
           <label style={styles.label}>비밀번호 확인</label>
-          <input type="password" placeholder="••••••••" style={styles.input} />
+          <input 
+            type="password" 
+            placeholder="••••••••" 
+            style={styles.input}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
         </div>
 
         {/* 회원가입 버튼 */}
-        <button style={styles.signupButton}>
-          회원가입 <span style={styles.arrow}>→</span>
+        <button 
+          onClick={handleSignup} 
+          style={{...styles.signupButton, opacity: isLoading ? 0.7 : 1}}
+          disabled={isLoading}
+        >
+          {isLoading ? "가입 처리 중..." : (
+            <>
+              회원가입 <span style={styles.arrow}>→</span>
+            </>
+          )}
         </button>
 
         {/* 하단 링크 */}

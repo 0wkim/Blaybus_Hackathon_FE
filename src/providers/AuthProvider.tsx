@@ -1,9 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
+import api from "../api/axios";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -11,57 +12,37 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 새로고침 시: 서버에 인증 상태 확인
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch("/auth/me", { // 추후 수정 필요 
-          credentials: "include", // 쿠키 포함
-        });
-
-        if (res.ok) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch {
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const login = async () => {
+  // ✅ 로그인
+  const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-
     try {
-      const res = await fetch("/auth/login", { // 추후 수정 필요 
-        method: "POST",
-        credentials: "include", 
+      await api.post("/api/users/login", {
+        username: email,
+        password,
       });
 
-      if (!res.ok) {
-        throw new Error("로그인 실패");
-      }
-
+      // 로그인 성공 = 쿠키 발급 완료
       setIsAuthenticated(true);
+      return true;
+    } catch (error) {
+      console.error("Login Error:", error);
+      return false;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ✅ 로그아웃
   const logout = async () => {
-    await fetch("/auth/logout", { // 추후 수정 필요 
-      method: "POST",
-      credentials: "include",
-    });
-
-    setIsAuthenticated(false);
+    try {
+      await api.post("/api/users/logout");
+    } catch (error) {
+      console.error("Logout Error:", error);
+    } finally {
+      setIsAuthenticated(false);
+    }
   };
 
   return (
