@@ -28,12 +28,12 @@ const Header = () => {
         >
           Study
         </Link>
-        <Link 
+        {/* <Link 
           to="/parts/robotarm" 
           style={isActive('/parts') ? activeNavItemStyle : navItemStyle}
         >
           Parts
-        </Link>
+        </Link> */}
       </nav>
 
       {/* 우측 공간: 좌우 균형 유지 */}
