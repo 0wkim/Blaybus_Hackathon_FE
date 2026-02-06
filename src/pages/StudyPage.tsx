@@ -225,12 +225,14 @@ export default function StudyPage() {
 
         {!isExpanded && (
           <aside style={rightPanelStyle}>
-            <section style={panelCardStyle}>
+            {/* AI Assistant 섹션에 flex: 1을 주어 메모가 줄어들면 확장되게 합니다. */}
+            <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
                 <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
               </div>
-              <div style={aiStatusStyle}>
+              {/* AI 내용 영역도 남은 공간을 채우도록 설정 */}
+              <div style={{ ...aiStatusStyle, flex: 1, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '14px', color: (selectedPartId || activeSinglePartId) ? '#e2e8f0' : '#64748b' }}>
                   {(viewMode === 'single' ? activeSinglePartId : selectedPartId) 
                     ? `Ready to analyze ${viewMode === 'single' ? activeSinglePartId : selectedPartId}` 
@@ -247,7 +249,13 @@ export default function StudyPage() {
               )}
             </section>
 
-            <section style={{ ...memoSectionStyle, flex: isMemoOpen ? 1 : '0 0 auto', maxHeight: isMemoOpen ? 'none' : '56px' }}>
+            {/* Memo 섹션: 닫혔을 때(isMemoOpen: false) 높이를 고정하여 바닥으로 밀어냅니다. */}
+            <section style={{ 
+              ...memoSectionStyle, 
+              flex: isMemoOpen ? 1 : '0 0 auto', 
+              maxHeight: isMemoOpen ? 'none' : '60px', // 타이틀만 보일 정도의 높이
+              transition: 'all 0.3s ease' // 부드러운 전환 효과
+            }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMemoOpen ? '16px' : 0 }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>Memo</h3>
                 <button onClick={() => setIsMemoOpen(!isMemoOpen)} style={memoToggleBtnStyle}>
