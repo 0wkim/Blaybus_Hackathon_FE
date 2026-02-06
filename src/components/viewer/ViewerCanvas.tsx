@@ -13,10 +13,15 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import type { ModelDef } from '@/viewer/types'
 
+// [수정] 외부에서 호출 가능한 함수 타입 정의 (getCameraState 추가)
 export type ViewerCanvasHandle = {
   zoomIn: () => void
   zoomOut: () => void
   resetCamera: () => void
+  getCameraState: () => {
+    position: [number, number, number]
+    target: [number, number, number]
+  } | undefined
 }
 
 const ViewerCanvas = forwardRef<
@@ -28,8 +33,13 @@ const ViewerCanvas = forwardRef<
     onSelectPart: (id: string | null) => void
     isExpanded: boolean
     mode: string
+    // [수정] 초기 카메라 상태 Props 추가
+    initialCameraState?: {
+      position: [number, number, number]
+      target: [number, number, number]
+    }
   }
->(({ model, ghost, selectedPartId, onSelectPart, isExpanded, mode }, ref) => {
+>(({ model, ghost, selectedPartId, onSelectPart, isExpanded, mode, initialCameraState }, ref) => {
   const mountRef = useRef<HTMLDivElement | null>(null)
 
   const refs = useRef<{
@@ -57,33 +67,37 @@ const ViewerCanvas = forwardRef<
     zoomIn() {
       if (!refs.current) return
       const { camera, controls } = refs.current
-
       const dir = new THREE.Vector3()
       camera.getWorldDirection(dir)
-      camera.position.addScaledVector(dir, 0.25) //  확실한 줌인
-
+      camera.position.addScaledVector(dir, 0.25)
       controls.update()
     },
 
     zoomOut() {
       if (!refs.current) return
       const { camera, controls } = refs.current
-
       const dir = new THREE.Vector3()
       camera.getWorldDirection(dir)
-      camera.position.addScaledVector(dir, -0.25) //  확실한 줌아웃
-
+      camera.position.addScaledVector(dir, -0.25)
       controls.update()
     },
 
     resetCamera() {
       if (!refs.current) return
       const { camera, controls } = refs.current
-
       camera.position.set(2.0, 1.5, 2.2)
       controls.target.set(0, 0.6, 0)
-
       controls.update()
+    },
+
+    // [수정] 현재 카메라 상태 반환 구현
+    getCameraState() {
+      if (!refs.current) return undefined
+      const { camera, controls } = refs.current
+      return {
+        position: [camera.position.x, camera.position.y, camera.position.z],
+        target: [controls.target.x, controls.target.y, controls.target.z],
+      }
     },
   }))
 
@@ -120,7 +134,13 @@ const ViewerCanvas = forwardRef<
     scene.background = new THREE.Color(0x0f172a)
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100)
-    camera.position.set(2.0, 1.5, 2.2)
+    
+    // [수정] 초기 카메라 위치 설정 (저장된 값 or 기본값)
+    if (initialCameraState) {
+      camera.position.set(...initialCameraState.position)
+    } else {
+      camera.position.set(2.0, 1.5, 2.2)
+    }
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(window.devicePixelRatio)
@@ -129,7 +149,13 @@ const ViewerCanvas = forwardRef<
 
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
-    controls.target.set(0, 0.6, 0)
+    
+    // [수정] 초기 타겟 설정 (저장된 값 or 기본값)
+    if (initialCameraState) {
+      controls.target.set(...initialCameraState.target)
+    } else {
+      controls.target.set(0, 0.6, 0)
+    }
 
     refs.current = { scene, camera, renderer, controls, rafId: 0 }
 

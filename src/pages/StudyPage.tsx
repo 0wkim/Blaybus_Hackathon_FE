@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ViewerCanvas, { ViewerCanvasHandle } from '../components/viewer/ViewerCanvas'
 import { RobotArmModel } from '../components/viewer/objects/RobotArm/model'
@@ -28,7 +28,7 @@ export default function StudyPage() {
   const [viewMode, setViewMode] = useState<StudyViewMode>('simulator')
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   
-  // 단일 부품 모드에서 현재 선택된 부품 ID (기본값: 첫 번째 부품)
+  // 단일 부품 모드에서 현재 선택된 부품 ID
   const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
 
   const [ghost, setGhost] = useState(true)
@@ -36,10 +36,10 @@ export default function StudyPage() {
   const [showGuide, setShowGuide] = useState(true) 
   const [showAssemblyGuide, setShowAssemblyGuide] = useState(true)
 
-  // ▼ 수정된 코드: 무조건 초기화(null)만 수행
+  // [수정] 모델 변경 시 선택 상태 무조건 초기화 (자동 선택 X)
   useEffect(() => {
-    setSelectedPartId(null);      // 시뮬레이터 모드 선택 초기화
-    setActiveSinglePartId(null);  // 단일 부품 모드 선택 초기화 (자동 선택 로직 삭제)
+    setSelectedPartId(null);
+    setActiveSinglePartId(null);
   }, [modelId]);
 
   useEffect(() => {
@@ -47,18 +47,45 @@ export default function StudyPage() {
     document.body.style.background = 'radial-gradient(circle at center, #1e293b 0%, #080c14 100%)'
   }, [])
 
-  // [수정 1] 확장/축소 시 캔버스 크기 재계산을 위해 resize 이벤트 강제 발생
+  // [수정] 확장/축소 시 캔버스 크기 재계산을 위해 resize 이벤트 강제 발생
   useEffect(() => {
-    // 레이아웃 전환 애니메이션 등을 고려하여 약간의 지연 후 실행
     const timer = setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
-    }, 50); // 0.05초 후 리사이징 알림
-
+    }, 50); 
     return () => clearTimeout(timer);
   }, [isExpanded]);
 
-  // 단일 부품 모드에서 선택된 부품 객체 찾기
-  const activeSinglePart = currentModel.parts.find((p: any) => p.id === activeSinglePartId)
+  /* ========== 카메라 상태 저장/복원 로직 ========== */
+  const storageKey = `camera_state_${modelId}`;
+
+  // 1. 마운트 시 저장된 카메라 상태 불러오기
+  const savedCameraState = useMemo(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved ? JSON.parse(saved) : undefined;
+    } catch (e) {
+      console.error("Failed to load camera state", e);
+      return undefined;
+    }
+  }, [storageKey]);
+
+  // 2. 주기적으로(1초마다) 카메라 상태 저장
+  useEffect(() => {
+    // 시뮬레이터 모드일 때만 저장 (원한다면 다른 모드도 가능)
+    if (viewMode === 'single') return; // 단일 모드는 각도가 다를 수 있으므로 제외 가능
+
+    const saveInterval = setInterval(() => {
+      if (viewerRef.current?.getCameraState) {
+        const currentState = viewerRef.current.getCameraState();
+        if (currentState) {
+          localStorage.setItem(storageKey, JSON.stringify(currentState));
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(saveInterval);
+  }, [viewMode, storageKey]);
+
 
   return (
     <div style={containerStyle}>
@@ -79,7 +106,7 @@ export default function StudyPage() {
           </div>
 
           <div style={canvasContainerStyle}>
-            {/* 줌 컨트롤 (단일 부품 모드가 아닐 때만 혹은 필요시 표시) */}
+            {/* 줌 컨트롤 (단일 부품 모드가 아닐 때) */}
             {viewMode !== 'single' && (
               <div style={zoomControlsStyle}>
                 <button style={zoomBtnStyle} onClick={() => viewerRef.current?.zoomIn()}>＋</button>
@@ -88,7 +115,7 @@ export default function StudyPage() {
               </div>
             )}
 
-            {/* 안내 메시지들 (기존 코드 유지) */}
+            {/* 안내 메시지들 */}
             {viewMode === 'assembly' && (
               <div style={guideWrapperStyle}>
                 <button onClick={() => setShowAssemblyGuide(!showAssemblyGuide)} style={guideToggleBtnStyle}>
@@ -106,7 +133,6 @@ export default function StudyPage() {
 
             {viewMode === 'simulator' && (
                <div style={guideWrapperStyle}>
-                 {/* ...기존 시뮬레이터 가이드 코드... */}
                  <button onClick={() => setShowGuide(!showGuide)} style={guideToggleBtnStyle}>
                    {showGuide ? '▽ Mouse Controls Guide' : '△ Mouse Controls Guide'}
                  </button>
@@ -122,13 +148,11 @@ export default function StudyPage() {
                </div>
             )}
 
-            {/* =========================================================
-                [수정됨] 단일 부품 뷰 모드 레이아웃 (스케치 반영)
-               ========================================================= */}
+            {/* 단일 부품 뷰 모드 */}
             {viewMode === 'single' ? (
               <div style={singleModeContainerStyle}>
                 
-                {/* 1. 왼쪽: 부품 목록 리스트 (Sidebar) */}
+                {/* 1. 왼쪽: 부품 목록 리스트 */}
                 <div style={singleSidebarStyle}>
                   {currentModel.parts
                     .filter((p: any, index: number, self: any[]) => 
@@ -146,35 +170,32 @@ export default function StudyPage() {
                     ))}
                 </div>
 
-                {/* 2. 중앙: 3D 뷰어 (현재 선택된 부품만 강조하거나 보여줌) */}
+                {/* 2. 중앙: 3D 뷰어 */}
                 <div style={singleViewerAreaStyle}>
-                    {/* 뷰어를 여기에 렌더링. selectedPartId를 강제로 주입하여 해당 부품만 보여주거나 강조 */}
                     <ViewerCanvas
                         ref={viewerRef}
                         model={currentModel}
-                        ghost={true} // 나머지는 투명하게
-                        selectedPartId={activeSinglePartId} // 선택된 부품 강조
+                        ghost={true} 
+                        selectedPartId={activeSinglePartId} 
                         onSelectPart={setActiveSinglePartId}
                         isExpanded={isExpanded}
-                        mode={'single'} // 뷰어 내부에서 single 모드 처리 필요 (카메라 포커싱 등)
+                        mode={'single'} 
                     />
                     
-                    {/* 부품 이름 오버레이 (스케치의 '부품' 글자 위치) */}
+                    {/* 부품 이름 라벨 */}
                     <div style={centerPartLabelStyle}>
                         {activeSinglePartId || "Select a Part"}
                     </div>
                 </div>
 
-                {/* 3. 오른쪽 오버레이: 설명 & 수치 패널 */}
+                {/* 3. 오른쪽: 설명 & 수치 패널 */}
                 <div style={singleInfoPanelStyle}>
-                    {/* 설명 박스 */}
                     <div style={infoBoxStyle}>
-                        {/* [수정] 여기에 부품 이름을 크게 표시합니다 */}
+                        {/* [수정] 부품 이름 표시 */}
                         <h3 style={partNameTitleStyle}>
                             {activeSinglePartId || "Select a Part"}
                         </h3>
                         
-                        {/* 구분선 */}
                         <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
 
                         <h4 style={infoTitleStyle}>설명 (Description)</h4>
@@ -196,7 +217,7 @@ export default function StudyPage() {
 
               </div>
             ) : (
-              // 조립도/시뮬레이터 모드일 때 기존 뷰어
+              // 조립도/시뮬레이터 모드
               <ViewerCanvas
                 ref={viewerRef}
                 model={currentModel}
@@ -205,12 +226,14 @@ export default function StudyPage() {
                 onSelectPart={setSelectedPartId}
                 isExpanded={isExpanded}
                 mode={viewMode}
+                // [수정] 초기 카메라 상태 전달
+                initialCameraState={savedCameraState}
               />
             )}
           </div>
         </section>
 
-        {/* 4. 맨 오른쪽: AI Assistant & Memo (기존 유지 - 스케치의 우측 패널) */}
+        {/* 4. 맨 오른쪽: AI Assistant & Memo */}
         {!isExpanded && (
           <aside style={rightPanelStyle}>
             <section style={panelCardStyle}>
@@ -218,14 +241,13 @@ export default function StudyPage() {
               <div style={aiStatusStyle}>
                 <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
                 <span style={{ fontSize: '14px', color: '#94a3b8' }}>
-                   {/* 단일 모드일 땐 activeSinglePartId, 아니면 selectedPartId 표시 */}
                   {(viewMode === 'single' ? activeSinglePartId : selectedPartId) 
                     ? `Analyzing: ${viewMode === 'single' ? activeSinglePartId : selectedPartId}` 
                     : 'Select a part to analyze...'}
                 </span>
               </div>
               <div style={{ marginTop: '16px', height: '100px', border: '1px dashed #334155', borderRadius: '8px' }}>
-                {/* AI 채팅 내용 Placeholder */}
+                {/* Chat Placeholder */}
               </div>
             </section>
 
@@ -272,10 +294,9 @@ function Tab({ label, active, onClick }: { label: string; active: boolean; onCli
 }
 
 /* =============================================================
-   STYLES (기존 스타일 + 추가된 단일 모드 스타일)
+   STYLES
    ============================================================= */
 
-/* ... (기존 containerStyle, mainLayoutStyle 등 상단 스타일은 그대로 유지) ... */
 const containerStyle: React.CSSProperties = {
   height: '100vh',
   display: 'flex',
@@ -286,12 +307,11 @@ const containerStyle: React.CSSProperties = {
 const mainLayoutStyle = (isExpanded: boolean): React.CSSProperties => ({
   flex: 1,
   display: 'grid',
-  // [수정] 오른쪽 패널 크기를 320px -> 300px 정도로 살짝 줄여 여유 확보 추천
   gridTemplateColumns: isExpanded ? '1fr' : '1fr 320px', 
   padding: '20px',
   gap: '20px',
-  overflow: 'hidden', // 전체 스크롤 방지
-  transition: 'grid-template-columns 0.3s ease', // 부드러운 전환 효과 (선택사항)
+  overflow: 'hidden', 
+  transition: 'grid-template-columns 0.3s ease',
 });
 
 const viewerPanelStyle: React.CSSProperties = {
@@ -303,10 +323,10 @@ const viewerPanelStyle: React.CSSProperties = {
   flexDirection: 'column',
   overflow: 'hidden',
   backdropFilter: 'blur(10px)',
-  
-  // [수정 2] ★★★ 이 속성이 없으면 캔버스가 그리드를 뚫고 나갑니다! ★★★
+  // [중요] Flex/Grid 내부에서 캔버스 크기 제어
   minWidth: 0, 
 };
+
 const subHeaderStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
@@ -315,6 +335,7 @@ const subHeaderStyle: React.CSSProperties = {
     borderBottom: '1px solid #1e293b',
     background: 'rgba(30, 41, 59, 0.3)',
 };
+
 const canvasContainerStyle: React.CSSProperties = {
     flex: 1,
     position: 'relative',
@@ -330,7 +351,6 @@ const singleModeContainerStyle: React.CSSProperties = {
     position: 'relative',
 };
 
-// 1. 왼쪽 사이드바 (리스트)
 const singleSidebarStyle: React.CSSProperties = {
     width: '100px', 
     background: 'rgba(2, 6, 23, 0.5)',
@@ -341,8 +361,7 @@ const singleSidebarStyle: React.CSSProperties = {
     padding: '16px 10px',
     overflowY: 'auto',
     zIndex: 10,
-    
-    // [핵심 수정 1] 화면이 좁아져도 절대 찌그러지지 않게 고정
+    // [중요] 찌그러짐 방지
     flexShrink: 0, 
 };
 
@@ -365,16 +384,13 @@ const sidebarThumbStyle: React.CSSProperties = {
     objectFit: 'cover',
 };
 
-// 2. 중앙 뷰어 영역
 const singleViewerAreaStyle: React.CSSProperties = {
     flex: 1,
     position: 'relative',
     background: 'transparent',
-    
-    // [핵심 수정 3] 부모 공간이 줄어들면 같이 줄어들 수 있도록 허용
-    // 이게 없으면 내용물(3D Canvas) 크기만큼 버티느라 양옆을 밀어냅니다.
+    // [중요] 캔버스 리사이징 허용
     minWidth: 0, 
-    overflow: 'hidden', // 넘치는 부분 자르기
+    overflow: 'hidden',
 };
 
 const centerPartLabelStyle: React.CSSProperties = {
@@ -391,7 +407,6 @@ const centerPartLabelStyle: React.CSSProperties = {
     border: '1px solid #334155',
 };
 
-// 2. 오른쪽 정보 패널 (설명/수치)
 const singleInfoPanelStyle: React.CSSProperties = {
     width: '240px',
     borderLeft: '1px solid #1e293b',
@@ -401,36 +416,33 @@ const singleInfoPanelStyle: React.CSSProperties = {
     gap: '16px',
     padding: '16px',
     zIndex: 10,
-    
-    // [핵심 수정 2] 화면이 좁아져도 절대 찌그러지지 않게 고정
+    // [중요] 찌그러짐 방지
     flexShrink: 0,
 };
 
 const infoBoxStyle: React.CSSProperties = {
-    background: 'rgba(255, 255, 255, 0.05)', // 스케치의 회색 박스 느낌
+    background: 'rgba(255, 255, 255, 0.05)',
     borderRadius: '12px',
     padding: '16px',
-    flex: 1, // 상하 등분
+    flex: 1, 
     border: '1px solid rgba(255, 255, 255, 0.1)',
     display: 'flex',
     flexDirection: 'column',
 };
 
-// [새로 추가] 부품 이름용 큰 제목 스타일
 const partNameTitleStyle: React.CSSProperties = {
     margin: 0,
     fontSize: '20px',
     fontWeight: 700,
-    color: '#38bdf8', // 하늘색 포인트 컬러
-    wordBreak: 'break-word', // 이름이 길면 줄바꿈
+    color: '#38bdf8',
+    wordBreak: 'break-word',
 };
 
-// [수정] 소제목(설명, 수치) 스타일
 const infoTitleStyle: React.CSSProperties = {
     margin: '0 0 8px 0',
     fontSize: '13px',
     fontWeight: 600,
-    color: '#94a3b8', // 연한 회색으로 변경하여 위계 구분
+    color: '#94a3b8',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
 };
@@ -456,7 +468,6 @@ const specItemStyle: React.CSSProperties = {
     paddingBottom: '4px',
 };
 
-/* --- 기존 우측 패널 및 기타 스타일 유지 --- */
 const rightPanelStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -464,10 +475,10 @@ const rightPanelStyle: React.CSSProperties = {
   height: '100%',
   minHeight: 0,
   overflow: 'hidden',
-  
-  // [수정 3] 패널이 찌그러지지 않도록 최소 너비 보장
+  // [중요] 패널 최소 너비 보장
   minWidth: '320px', 
 };
+
 const panelCardStyle: React.CSSProperties = {
     background: 'rgba(15, 23, 42, 0.4)',
     borderRadius: '24px',
