@@ -1,18 +1,29 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isHovered, setIsHovered] = useState(false);
+
   const isActive = (path: string) => location.pathname.startsWith(path);
+
+  const handleLogout = () => {
+    // 로그아웃 로직 추가 필요
+    console.log("Logout clicked");
+    navigate('/login');
+  };
 
   return (
     <header style={headerStyle}>
+      {/* 로고 영역 */}
       <div style={logoWrapperStyle}>
         <Link to="/" style={logoLinkStyle}>
           SIMVEX <span style={{ color: '#38bdf8' }}>•</span>
         </Link>
       </div>
 
+      {/* 중앙 네비게이션 */}
       <nav style={navContainerStyle}>
         <Link 
           to="/dashboard" 
@@ -28,14 +39,42 @@ const Header = () => {
         </Link>
       </nav>
 
-      <div style={rightSpaceStyle} />
+      {/* 오른쪽 로그아웃 버튼 영역 */}
+      <div style={rightSpaceStyle}>
+        <button
+          onClick={handleLogout}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
+            ...logoutButtonStyle,
+            backgroundColor: isHovered ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+            color: isHovered ? '#ef4444' : '#94a3b8',
+          }}
+        >
+          <span style={{ fontSize: '13px', fontWeight: 500 }}>Logout</span>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+      </div>
     </header>
   );
 };
 
 const headerStyle: React.CSSProperties = {
   height: '60px',
-  position: 'fixed', // 최상단 물리적 고정
+  position: 'fixed',
   top: 0,
   left: 0,
   right: 0,
@@ -48,6 +87,7 @@ const headerStyle: React.CSSProperties = {
   borderBottom: '1px solid #1e293b',
   zIndex: 9999,
   boxSizing: 'border-box',
+  width: '100vw',
 };
 
 const logoWrapperStyle: React.CSSProperties = {
@@ -64,18 +104,18 @@ const logoLinkStyle: React.CSSProperties = {
 };
 
 const navContainerStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: '50%',
-  transform: 'translateX(-50%)', // 화면 정중앙 고정
   display: 'flex',
   gap: '4px',
   background: '#0f172a',
   padding: '4px',
   borderRadius: '12px',
+  position: 'absolute',
+  left: '50%',
+  transform: 'translateX(-50%)',
 };
 
 const navItemStyle: React.CSSProperties = {
-  width: '85px', // 너비 고정으로 텍스트 변화에도 미동 없음
+  width: '85px',
   height: '32px',
   display: 'flex',
   alignItems: 'center',
@@ -84,18 +124,33 @@ const navItemStyle: React.CSSProperties = {
   textDecoration: 'none',
   fontSize: '14px',
   borderRadius: '8px',
+  transition: 'all 0.2s ease',
 };
 
 const activeNavItemStyle: React.CSSProperties = {
   ...navItemStyle,
   color: '#fff',
-  background: '#2563eb', // 파란색 캡슐 강조
+  background: '#2563eb',
   fontWeight: 600,
 };
 
 const rightSpaceStyle: React.CSSProperties = {
   width: '150px',
+  display: 'flex',
+  justifyContent: 'flex-end',
   flexShrink: 0,
+};
+
+const logoutButtonStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '6px 12px',
+  borderRadius: '8px',
+  border: 'none',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  outline: 'none',
 };
 
 export default Header;

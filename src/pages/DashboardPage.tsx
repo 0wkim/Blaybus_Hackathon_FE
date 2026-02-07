@@ -50,13 +50,13 @@ export default function DashboardPage() {
             onClick={() => navigate("/study/robotgripper")} 
           />
 
-          {[1, 2, 3, 4].map((i) => (
+          {/* {[1, 2, 3, 4].map((i) => (
             <div key={i} style={addCardStyle}>
               <div style={plusCircleStyle}>+</div>
               <h4 style={addTitleStyle}>Add New Project</h4>
               <p style={addDescStyle}>Create a new study or parts project</p>
             </div>
-          ))}
+          ))} */}
         </div>
       </main>
     </div>
@@ -79,7 +79,7 @@ function ProjectCard({ title, desc, imageSrc, onClick }: any) {
       <div style={cardContentStyle}>
         <h3 style={cardTitleStyle}>{title}</h3>
         <p style={cardDescStyle}>{desc}</p>
-        <button onClick={onClick} style={resumeBtnStyle}>Resume</button>
+        <button onClick={onClick} style={resumeBtnStyle}>Study</button>
       </div>
     </div>
   )
