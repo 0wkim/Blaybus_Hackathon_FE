@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import api from "../api/axios";
 
 interface AuthContextType {
@@ -11,50 +11,51 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // 1. 초기 상태를 결정할 때 localStorage를 즉시 확인 (새로고침 시 false 방지)
+  // 새로고침 시 localStorage 기준으로 로그인 여부 복원
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return localStorage.getItem("isLoggedIn") === "true";
   });
+
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ 로그인
-  const login = async (email: string, password: string): Promise<boolean> => {
+  // 로그인
+  const login = async (
+    email: string,
+    password: string
+  ): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const response = await api.post("/api/users/login", {
+      await api.post("/api/users/login", {
         username: email,
         password,
       });
 
-      // 🔍 2. 콘솔에 출력하여 확인합니다.
-      console.log("===== 로그인 응답 확인 =====");
-      console.log("전체 응답 객체 (response):", response);
-      console.log("서버 데이터 (response.data):", response.data); 
-      // ▲ 여기에 uuid와 accessToken이 있는지 확인하세요.
-      console.log("==========================");
-
-      // 2. 로그인 성공 시 브라우저 저장소에 기록
+      // 로그인 성공 → 쿠키는 서버가, 상태는 localStorage가 담당
       localStorage.setItem("isLoggedIn", "true");
       setIsAuthenticated(true);
       return true;
     } catch (error) {
       console.error("Login Error:", error);
+      localStorage.removeItem("isLoggedIn");
+      setIsAuthenticated(false);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ✅ 로그아웃
+  // 로그아웃 (이때만 로그인 상태 해제)
   const logout = async () => {
+    setIsLoading(true);
     try {
       await api.post("/api/users/logout");
     } catch (error) {
       console.error("Logout Error:", error);
     } finally {
-      // 3. 로그아웃 시 기록 삭제
+      // 서버 쿠키 만료 + 프론트 상태 초기화
       localStorage.removeItem("isLoggedIn");
       setIsAuthenticated(false);
+      setIsLoading(false);
     }
   };
 
