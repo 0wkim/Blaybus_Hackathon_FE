@@ -21,10 +21,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      await api.post("/api/users/login", {
+      const response = await api.post("/api/users/login", {
         username: email,
         password,
       });
+
+      // 🔍 2. 콘솔에 출력하여 확인합니다.
+      console.log("===== 로그인 응답 확인 =====");
+      console.log("전체 응답 객체 (response):", response);
+      console.log("서버 데이터 (response.data):", response.data); 
+      // ▲ 여기에 uuid와 accessToken이 있는지 확인하세요.
+      console.log("==========================");
 
       // 2. 로그인 성공 시 브라우저 저장소에 기록
       localStorage.setItem("isLoggedIn", "true");
