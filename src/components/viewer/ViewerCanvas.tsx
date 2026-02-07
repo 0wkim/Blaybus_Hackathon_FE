@@ -60,7 +60,6 @@ const ViewerCanvas = forwardRef<
   const pickablesRef = useRef<THREE.Object3D[]>([])
   const materialSnapshot = useMemo(() => new WeakMap<THREE.Material, any>(), [])
 
-  // 시뮬레이션 관련 Refs
   const simFromRef = useRef<Record<string, THREE.Vector3>>({})
   const simToRef = useRef<Record<string, THREE.Vector3>>({})
   const explodeRef = useRef(0)
@@ -91,7 +90,6 @@ const ViewerCanvas = forwardRef<
       transformControls.detach()
       onSelectPart(null)
 
-      // 시뮬레이터 상태도 초기화
       explodeRef.current = 0
       Object.entries(partsRef.current).forEach(([id, p]) => {
         p.root.position.copy(p.assembled)
@@ -109,7 +107,6 @@ const ViewerCanvas = forwardRef<
     },
   }))
 
-  /* ================= 단일 부품 전용 유틸리티 ================= */
   const framePart = (root: THREE.Object3D) => {
     if (!refs.current) return
     const box = new THREE.Box3().setFromObject(root)
@@ -117,9 +114,9 @@ const ViewerCanvas = forwardRef<
     const center = box.getCenter(new THREE.Vector3())
     const maxDim = Math.max(size.x, size.y, size.z)
     const fov = refs.current.camera.fov * (Math.PI / 180)
-    const distance = maxDim / (2 * Math.tan(fov / 2))
+    const distance = (maxDim / (2 * Math.tan(fov / 2))) * 1.5
 
-    refs.current.camera.position.set(center.x + distance, center.y + distance, center.z + distance * 2)
+    refs.current.camera.position.set(center.x + distance, center.y + distance, center.z + distance)
     refs.current.controls.target.copy(center)
     refs.current.controls.update()
   }
@@ -153,39 +150,22 @@ const ViewerCanvas = forwardRef<
     animate()
   }
 
-  // 1. resize 감지 useEffect 추가
   useEffect(() => {
-    if (!mountRef.current || !refs.current) return;
-
+    if (!mountRef.current || !refs.current) return
     const handleResize = () => {
-      if (!mountRef.current || !refs.current) return;
-      const { camera, renderer } = refs.current;
-
-      // 부모 div의 실제 너비와 높이를 다시 잽니다.
-      const width = mountRef.current.clientWidth;
-      const height = mountRef.current.clientHeight;
-
-      // 캔버스 크기 강제 업데이트
-      renderer.setSize(width, height);
-      
-      // 카메라 비율 재설정
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-    };
-
-    // ResizeObserver를 통해 mountRef 요소의 크기 변화를 실시간 감시
-    const ro = new ResizeObserver(() => {
-      // 레이아웃이 완전히 변한 뒤 측정하기 위해 requestAnimationFrame 사용
-      requestAnimationFrame(handleResize);
-    });
-
-    ro.observe(mountRef.current);
-    
-    // 버튼 클릭 직후에도 즉시 한 번 실행
-    handleResize();
-
-    return () => ro.disconnect();
-  }, [isExpanded]);
+      if (!mountRef.current || !refs.current) return
+      const { camera, renderer } = refs.current
+      const width = mountRef.current.clientWidth
+      const height = mountRef.current.clientHeight
+      renderer.setSize(width, height)
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+    }
+    const ro = new ResizeObserver(() => requestAnimationFrame(handleResize))
+    ro.observe(mountRef.current)
+    handleResize()
+    return () => ro.disconnect()
+  }, [isExpanded])
 
   /* ================= Scene & Interaction Setup ================= */
   useLayoutEffect(() => {
@@ -221,6 +201,9 @@ const ViewerCanvas = forwardRef<
 
     refs.current = { scene, camera, renderer, controls, transformControls, rafId: 0 }
 
+    const raycaster = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+
     const loader = new GLTFLoader()
     model.parts.forEach((p) => {
       loader.load(p.path, (gltf: GLTF) => {
@@ -253,7 +236,6 @@ const ViewerCanvas = forwardRef<
         simFromRef.current[p.id] = assembled.clone()
         simToRef.current[p.id] = exploded.clone()
 
-        // 초기 모드가 'single'이 아니면 씬에 추가
         if (mode !== 'single') {
           scene.add(wrapper)
           partsRef.current[p.id].isAdded = true
@@ -261,7 +243,32 @@ const ViewerCanvas = forwardRef<
       })
     })
 
-    // Interaction Events (시뮬레이터 드래그)
+    const onClick = (e: MouseEvent) => {
+      // 단일 부품 모드에서는 클릭 선택 비활성화
+      if (mode === 'single' || draggingRef.current || !refs.current) return
+      
+      const rect = renderer.domElement.getBoundingClientRect()
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycaster.setFromCamera(mouse, camera)
+      const intersects = raycaster.intersectObjects(pickablesRef.current)
+
+      if (intersects.length > 0) {
+        const hit = intersects[0].object
+        const partId = hit.userData.partId
+        onSelectPart(partId)
+        
+        if (mode === 'edit') {
+          const part = partsRef.current[partId]
+          if (part) transformControls.attach(part.root)
+        }
+      } else {
+        onSelectPart(null)
+        transformControls.detach()
+      }
+    }
+
     const onPointerDown = (e: PointerEvent) => {
       if (mode !== 'simulator' || !e.shiftKey) return
       draggingRef.current = true
@@ -295,6 +302,7 @@ const ViewerCanvas = forwardRef<
       })
     }
 
+    renderer.domElement.addEventListener('click', onClick)
     renderer.domElement.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
@@ -309,6 +317,7 @@ const ViewerCanvas = forwardRef<
 
     return () => {
       cancelAnimationFrame(refs.current?.rafId || 0)
+      renderer.domElement?.removeEventListener('click', onClick)
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
       renderer.dispose()
@@ -316,20 +325,22 @@ const ViewerCanvas = forwardRef<
       mountRef.current?.removeChild(renderer.domElement)
       refs.current = null
     }
-  }, [model.id, mode]) // mode가 바뀔 때 시뮬레이터 이벤트 리셋을 위해 포함
+  }, [model.id, mode])
 
-  /* ================= 단일 부품 가시성 제어 Effect ================= */
+  /* ================= 상태 변화에 따른 부품 가시성 & 하이라이트 제어 ================= */
   useEffect(() => {
     if (!refs.current) return
     const { scene, transformControls } = refs.current
 
     Object.entries(partsRef.current).forEach(([id, p]) => {
+      const isTarget = selectedPartId === id
+
       if (mode === 'single') {
-        const isTarget = selectedPartId === id
+        // 단일 모드 가시성 제어
         if (isTarget && !p.isAdded) {
           scene.add(p.root)
           p.isAdded = true
-          p.root.position.set(0, 0, 0) // 중앙 정렬
+          p.root.position.set(0, 0, 0)
           animateAppear(p.root)
           framePart(p.root)
           transformControls.detach()
@@ -337,16 +348,57 @@ const ViewerCanvas = forwardRef<
           scene.remove(p.root)
           p.isAdded = false
         }
+
+        // 단일 부품 모드에서는 하이라이트(Emissive) 미적용
+        p.root.traverse((obj: any) => {
+          if (!obj.isMesh) return
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+          mats.forEach((m: any) => {
+            const snap = materialSnapshot.get(m)
+            if (snap) {
+              m.emissive.copy(snap.emissive)
+              m.emissiveIntensity = 1.0
+              m.transparent = snap.transparent
+              m.opacity = snap.opacity
+            }
+          })
+        })
       } else {
-        // 일반 모드에서는 모든 부품이 존재해야 함
+        // 일반 모드 가시성 제어
         if (!p.isAdded) {
           scene.add(p.root)
           p.isAdded = true
           p.root.position.copy(p.assembled)
         }
+
+        // 일반 모드 하이라이트 및 Ghost 효과 적용
+        p.root.traverse((obj: any) => {
+          if (!obj.isMesh) return
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+          mats.forEach((m: any) => {
+            const snap = materialSnapshot.get(m)
+            if (!snap) return
+
+            if (isTarget) {
+              m.emissive.setHex(0x38bdf8) // 하늘색 발광
+              m.emissiveIntensity = 0.5
+            } else {
+              m.emissive.copy(snap.emissive)
+              m.emissiveIntensity = 1.0
+            }
+
+            if (ghost && selectedPartId && !isTarget) {
+              m.transparent = true
+              m.opacity = 0.2
+            } else {
+              m.transparent = snap.transparent
+              m.opacity = snap.opacity
+            }
+          })
+        })
       }
     })
-  }, [selectedPartId, mode])
+  }, [selectedPartId, mode, ghost])
 
   return <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 })
