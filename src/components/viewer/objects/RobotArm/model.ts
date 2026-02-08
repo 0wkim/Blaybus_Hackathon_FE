@@ -1,22 +1,46 @@
 
 export const RobotArmModel = {
+  // 전체 모델 설명 (조립도 탭용)
+  description: {
+    title: "Robot Arm",
+    summary: "여러 개의 관절과 링크로 구성된 기계 장치로, 사람의 팔처럼 물체를 집고, 이동하고, 정밀 작업을 수행하도록 설계된 자동화 시스템입니다.",
+    usage: [
+      { title: "산업 자동화", content: "- 조립, 용접, 도장, 검사\n- 반복 작업의 정확도와 생산성 향상" },
+      { title: "물류 및 이송", content: "Pick & Place, 분류, 적재, 패키징" },
+      { title: "정밀 작업", content: "- 반도체·전자 부품 조립\n-미세 위치 제어가 필요한 공정" }
+    ],
+    theory: [
+      { title: "자유도 (DoF)", content: "산업용 로봇은 보통 6 DoF(위치-X,Y,Z/방향-roll, pitch, yaw)" },
+      { title: "로봇 운동학", content: "정기구학(관절 각도→말단 위치) 및 역기구학(원하는 말단 위치 → 관절 각도 계산)" }
+    ]
+  },
+  // 부품별 상세 정보
   parts: [
     {
-      id: 'base',
+      id: 'Base',
+      name: '베이스 - Base',
+      material: '주강, 알루미늄 합금',
+      desc: '장치 전체를 지지하고 고정하는 하부 구조물로, 모든 움직임의 기준이 되는 부품',
       path: '/models/RobotArm/base.glb',
       thumbnail: '/models/RobotArm/thumbnails/base.png',
       assembled: { x: 0, y: 0, z: 0 },
       exploded: { x: 0, y: 0, z: 0 }, 
     },
     {
-      id: 'Part2',
+      id: 'Joint Housing',
+      name: '관절 하우징 - Joint Housing',
+      material: '알루미늄 합금, 주강 또는 합금강',
+      desc: '내부 구동부를 보호하며 링크 간 회전 운동을 가능하게 하는 핵심 구조 부품',
       path: '/models/RobotArm/Part2.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part2.png',
       assembled: { x: 0, y: 0.1, z: 0 },
       exploded: { x: 0, y: 0.3, z: 0 }, 
     },
     {
-      id: 'Part3',
+      id: 'Arm Segment',
+      name: '팔의 링크 - Arm Segment',
+      material: '알루미늄 합금, 탄소강/합금강',
+      desc: '관절과 관절을 연결하며, 팔의 길이와 움직임 범위를 결정하는 구조 부품',
       path: '/models/RobotArm/Part3.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part3.png',
       assembled: { x: 0, y: 0.26, z: 0.15 }, 
@@ -24,21 +48,30 @@ export const RobotArmModel = {
       exploded: { x: 0, y: 0.6, z: 0.3 }, 
     },
     {
-      id: 'Part4',
+      id: 'End Joint',
+      name: '손목 관절 - End Joint',
+      material: '알루미늄 합금, 합금강',
+      desc: '로봇 팔 끝단에서 엔드 이펙터의 방향과 회전을 정밀하게 제어하는 관절 부품',
       path: '/models/RobotArm/Part4.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part4.png',
       assembled: { x: 0, y: 0.5, z: -0.2 },
       exploded: { x: 0, y: 0.9, z: -0.4 }, 
     },
     {
-      id: 'Part5',
+      id: 'Gripper',
+      name: '그리퍼 - Gripper',
+      material: '알루미늄 합금, 스테인리스강',
+      desc: '로봇 팔 끝단에 장착되어 물체를 집고 고정하거나 놓는 역할을 수행하는 엔드 이펙터',
       path: '/models/RobotArm/Part5.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part5.png',
       assembled: { x: 0, y: 0.5, z: 0.1 },
       exploded: { x: 0, y: 1.2, z: 0.5 }, 
     },
     {
-      id: 'Part6',
+      id: 'Joint Unit',
+      name: '관절 유닛 - Joint Unit',
+      material: '합금강, 알루미늄 하우징',
+      desc: '로봇 팔에서 링크를 회전시키는 관절 부품으로, 팔의 움직임과 하중 지지를 담당',
       path: '/models/RobotArm/Part6.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part6.png',
       assembled: { x: 0, y: 0.47, z: 0.24 },
@@ -46,7 +79,10 @@ export const RobotArmModel = {
       exploded: { x: 0, y: 1.5, z: 1.0 },
     },
     {
-      id: 'Part7',
+      id: 'Base Joint',
+      name: '회전 유닛 - Base Joint',
+      material: '주강 또는 단조강',
+      desc: '로봇 팔 전체를 지면 기준으로 회전시키는 하부 관절 유닛',
       path: '/models/RobotArm/Part7.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part7.png',
       assembled: { x: 0, y: 0.43, z: 0.28 },
@@ -54,7 +90,10 @@ export const RobotArmModel = {
       exploded: { x: 0, y: 1.8, z: 1.4 },
     },
     {
-      id: 'Part8_L',
+      id: 'Gripper Finge',
+      name: 'Gripper Finger',
+      material: '탄소강, 합금강, 알루미늄 합금강, 점촉부분-고무, 우레탄패드',
+      desc: '그리퍼에서 물체를 직접 집는 가동 조로, 파지력과 안정성을 결정하는 핵심 부품',
       path: '/models/RobotArm/Part8.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part8.png',
       assembled: { x: -0.045, y: 0.35, z: 0.34 },
@@ -62,7 +101,10 @@ export const RobotArmModel = {
       exploded: { x: -0.3, y: 2.1, z: 1.8 }, 
     },
     {
-      id: 'Part8_R',
+      id: 'Gripper Finge',
+      name: 'Gripper Finger (R)',
+      material: '탄소강, 합금강, 알루미늄 합금강, 점촉부분-고무, 우레탄패드',
+      desc: '그리퍼에서 물체를 직접 집는 가동 조로, 파지력과 안정성을 결정하는 핵심 부품',
       path: '/models/RobotArm/Part8.glb',
       thumbnail: '/models/RobotArm/thumbnails/Part8.png',
       assembled: { x: 0.045, y: 0.36, z: 0.35 },

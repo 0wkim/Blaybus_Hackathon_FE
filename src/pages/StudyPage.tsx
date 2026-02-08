@@ -1,7 +1,8 @@
 'use client'
 
+
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import ViewerCanvas from '../components/viewer/ViewerCanvas'
 import type { ViewerCanvasHandle } from '../components/viewer/ViewerCanvas'
 import { RobotArmModel } from '../components/viewer/objects/RobotArm/model'
@@ -9,6 +10,90 @@ import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
 import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
 import { RobotGripperModel } from '../components/viewer/objects/RobotGripper/model'
 import Header from '../components/Header'
+
+// ----------------------------------------------------------------------
+// AI Assistant Component
+// ----------------------------------------------------------------------
+const AIAssistantPanel = ({ 
+  targetPart, 
+  modelName, 
+  active 
+}: { 
+  targetPart: string | null, 
+  modelName: string, 
+  active: boolean 
+}) => {
+  const [response, setResponse] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setResponse('');
+    setError(null);
+  }, [targetPart, modelName]);
+
+  const handleAskAI = async () => {
+    if (!targetPart) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          modelName,
+          partName: targetPart,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('AI 서버 오류');
+      }
+
+      const data = await res.json();
+      setResponse(data.text);
+    } catch (err: any) {
+      setError(err.message || 'AI 요청 실패');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
+        <div style={statusDotStyle(active)} />
+      </div>
+
+      <div style={{ ...aiStatusStyle, flex: 1, flexDirection: 'column', gap: '10px' }}>
+        {!targetPart ? (
+          <span style={{ fontSize: '14px', color: '#64748b' }}>
+            부품을 선택하면 AI 분석을 사용할 수 있습니다.
+          </span>
+        ) : (
+          <>
+            {!response && !isLoading && !error && (
+              <button onClick={handleAskAI} style={aiButtonStyle}>
+                ✨ AI 분석 요청하기
+              </button>
+            )}
+            {isLoading && <span>⏳ 분석 중...</span>}
+            {error && <span style={{ color: '#ef4444' }}>⚠️ {error}</span>}
+            {response && <div style={{ whiteSpace: 'pre-wrap' }}>{response}</div>}
+          </>
+        )}
+      </div>
+    </section>
+  );
+};
+
+
+// ----------------------------------------------------------------------
+// Main Page Component
+// ----------------------------------------------------------------------
 
 const MODEL_DATA: Record<string, any> = {
   robotarm: RobotArmModel,
@@ -41,7 +126,15 @@ export default function StudyPage() {
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
 
-  // 'edit' 모드에서도 ghost를 false로 두어 드래그 시 충돌 방지
+  const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
+
+  // 1. 현재 선택된 부품 데이터를 찾는 로직 추가
+  const selectedPart = useMemo(() => {
+    const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
+    return currentModel.parts.find((p: any) => p.id === id);
+  }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
+
+  // Ghost Mode 설정
   useEffect(() => {
     if (viewMode === 'single' || viewMode === 'edit') {
       setGhost(false);
@@ -50,10 +143,12 @@ export default function StudyPage() {
     }
   }, [viewMode]);
 
+  // [중요] 뷰 모드가 변경되면 선택된 부품 초기화
   useEffect(() => {
+    if (viewMode === 'edit') return; 
     setSelectedPartId(null);
     setActiveSinglePartId(null);
-  }, [modelId]);
+  }, [viewMode, modelId]);
 
   useEffect(() => {
     document.body.style.margin = '0'
@@ -89,8 +184,6 @@ export default function StudyPage() {
     return () => clearInterval(saveInterval);
   }, [viewMode, storageKey]);
 
-  // 핸들러 안정화 (useCallback)
-  // ViewerCanvas가 불필요하게 리렌더링되어 드래그가 끊기는 현상 방지
   const handleSinglePartSelect = useCallback((id: string | null) => {
     setActiveSinglePartId(id);
   }, []);
@@ -99,7 +192,6 @@ export default function StudyPage() {
     setSelectedPartId(id);
   }, []);
 
-
   return (
     <div style={containerStyle}>
       <style>{`
@@ -107,6 +199,11 @@ export default function StudyPage() {
         #part-list-sidebar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.1); border-radius: 10px; }
         #part-list-sidebar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
         #part-list-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
+
+        #info-panel-content::-webkit-scrollbar { width: 4px; }
+        #info-panel-content::-webkit-scrollbar-track { background: transparent; }
+        #info-panel-content::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.2); border-radius: 10px; }
+        #info-panel-content::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
       `}</style>
 
       <Header />
@@ -216,12 +313,10 @@ export default function StudyPage() {
 
                 <div style={singleViewerAreaStyle}>
                     <ViewerCanvas 
-                      key={viewMode}
                       ref={viewerRef} 
                       model={currentModel} 
                       ghost={ghost} 
                       selectedPartId={viewMode === 'single' ? activeSinglePartId : selectedPartId} 
-                      /* 안정된 핸들러 전달 */
                       onSelectPart={viewMode === 'single' ? handleSinglePartSelect : handleMultiPartSelect} 
                       isExpanded={isExpanded} 
                       mode={viewMode} 
@@ -234,18 +329,101 @@ export default function StudyPage() {
                 </div>
 
                 <div style={singleInfoPanelStyle}>
-                    <div style={infoBoxStyle}>
-                        <h3 style={partNameTitleStyle}>
-                          {viewMode === 'single' ? (activeSinglePartId || "Select a Part") : (selectedPartId || "전체 조립도")}
-                        </h3>
-                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
-                        <h4 style={infoTitleStyle}>설명 (Description)</h4>
-                        <p style={infoContentStyle}>
-                          {viewMode === 'single' 
-                            ? (activeSinglePartId ? `${activeSinglePartId} 부품 상세 설명입니다.` : "목록에서 부품을 선택하세요.")
-                            : (selectedPartId ? `${selectedPartId} 부품의 조립 위치 정보입니다.` : "모델 전체의 구조를 확인 중입니다.")}
-                        </p>
+                  <div style={{ ...infoBoxStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                    {/* 상단 타이틀 구역 - 고정 */}
+                    <h3 style={partNameTitleStyle}>
+                      {viewMode === 'assembly' && !selectedPartId 
+                        ? currentModel.description.title 
+                        : (selectedPart?.name || selectedPartId || "부품을 선택하세요")}
+                    </h3>
+                    <div style={{ height: '1px', background: 'rgba(56, 189, 248, 0.2)', margin: '12px 0', flexShrink: 0 }} />
+
+                    {/* 스크롤 가능한 콘텐츠 구역 */}
+                    <div id="info-panel-content" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
+                      {(viewMode === 'assembly' && !selectedPartId) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          <section>
+                            <h4 style={infoTitleStyle}>설명</h4>
+                            {/* 색상 통일: #e2e8f0 */}
+                            <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{currentModel.description.summary}</p>
+                          </section>
+                          
+                          <section>
+                            <h4 style={infoTitleStyle}>주요 용도</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {currentModel.description.usage.map((item: any) => (
+                                <div key={item.title} style={badgeListItemStyle}>
+                                  <span style={badgeStyle}>{item.title}</span>
+                                  {/* 색상 통일: #e2e8f0 */}
+                                  <span style={{ 
+                                    fontSize: '11px', 
+                                    color: '#e2e8f0', 
+                                    whiteSpace: 'pre-wrap', 
+                                    lineHeight: '1.4' 
+                                  }}>
+                                    {item.content}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+
+                          <section>
+                            <h4 style={infoTitleStyle}>관련 이론</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {currentModel.description.theory.map((t: any) => (
+                                <div key={t.title} style={badgeListItemStyle}>
+                                  <span style={badgeStyle}>{t.title}</span>
+                                  {/* 색상 통일: #e2e8f0 */}
+                                  <span style={{ 
+                                    fontSize: '11px', 
+                                    color: '#e2e8f0', 
+                                    whiteSpace: 'pre-wrap', 
+                                    lineHeight: '1.4' 
+                                  }}>
+                                    {t.content}
+                                  </span>
+                                  {/* 추가 상세 정보 - 포인트 컬러 유지 */}
+                                  {t.details && (
+                                    <div style={{ 
+                                      marginTop: '4px',
+                                      paddingTop: '4px',
+                                      borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                                      fontSize: '10px', 
+                                      color: '#38bdf8', 
+                                      opacity: 0.8
+                                    }}>
+                                      {t.details}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {selectedPart ? (
+                            <>
+                              <section>
+                                <h4 style={infoTitleStyle}>재질</h4>
+                                <div style={materialBoxStyle}>
+                                  {selectedPart.material}
+                                </div>
+                              </section>
+                              <section>
+                                <h4 style={infoTitleStyle}>상세 설명</h4>
+                                {/* 색상 통일: #e2e8f0 */}
+                                <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{selectedPart.desc}</p>
+                              </section>
+                            </>
+                          ) : (
+                            <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>분석할 부품을 목록에서 선택하세요.</p>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -255,7 +433,6 @@ export default function StudyPage() {
                 model={currentModel}
                 ghost={ghost} 
                 selectedPartId={selectedPartId}
-                /* 안정된 핸들러 전달 */
                 onSelectPart={handleMultiPartSelect}
                 isExpanded={isExpanded}
                 mode={viewMode}
@@ -266,34 +443,27 @@ export default function StudyPage() {
 
         {!isExpanded && (
           <aside style={rightPanelStyle}>
-            <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
-                <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
-              </div>
-              <div style={{ ...aiStatusStyle, flex: 1, alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '14px', color: (selectedPartId || activeSinglePartId) ? '#e2e8f0' : '#64748b' }}>
-                  {(viewMode === 'single' ? activeSinglePartId : selectedPartId) 
-                    ? `Ready to analyze ${viewMode === 'single' ? activeSinglePartId : selectedPartId}` 
-                    : '부품을 선택하면 분석이 시작됩니다.'}
-                </span>
-              </div>
-              {viewMode !== 'single' && (
-                <div style={{ ...optionRowStyle, marginTop: '16px' }}>
-                  <label style={checkboxLabelStyle}>
-                    <input
-                      type="checkbox"
-                      checked={ghost}
-                      onChange={(e) => setGhost(e.target.checked)}
-                      style={{ accentColor: '#38bdf8' }}
-                    />
-                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
-                      Ghost Mode 활성화
-                    </span>
-                  </label>
-                </div>
-              )}
-            </section>
+            <AIAssistantPanel 
+              targetPart={currentTargetPart} 
+              modelName={modelId || "RobotArm"} 
+              active={!!currentTargetPart}
+            />
+
+            {viewMode !== 'single' && (
+                <section style={{ ...panelCardStyle, marginBottom: 0, padding: '12px' }}>
+                    <label style={checkboxLabelStyle}>
+                        <input
+                        type="checkbox"
+                        checked={ghost}
+                        onChange={(e) => setGhost(e.target.checked)}
+                        style={{ accentColor: '#38bdf8' }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                        Ghost Mode 활성화
+                        </span>
+                    </label>
+                </section>
+            )}
 
             <section style={{ 
               ...memoSectionStyle, 
@@ -330,8 +500,10 @@ export default function StudyPage() {
     </div>
   )
 }
+// ----------------------------------------------------------------------
+// Styles
+// ----------------------------------------------------------------------
 
-// 스타일 정의
 const containerStyle: React.CSSProperties = {
   height: '100vh',
   display: 'flex',
@@ -479,6 +651,7 @@ const infoContentStyle: React.CSSProperties = {
   fontSize: '13px',
   color: '#94a3b8',
   lineHeight: 1.5,
+  whiteSpace: 'pre-wrap'
 };
 
 const rightPanelStyle: React.CSSProperties = {
@@ -513,6 +686,19 @@ const aiStatusStyle: React.CSSProperties = {
   background: 'rgba(2, 6, 23, 0.6)',
   borderRadius: '16px',
   border: '1px solid rgba(56, 189, 248, 0.2)',
+};
+
+const aiButtonStyle: React.CSSProperties = {
+  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+  border: 'none',
+  padding: '10px 16px',
+  borderRadius: '8px',
+  color: '#fff',
+  fontWeight: 600,
+  fontSize: '13px',
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+  transition: 'transform 0.1s',
 };
 
 const statusDotStyle = (active: boolean): React.CSSProperties => ({
@@ -584,12 +770,6 @@ const memoToggleBtnStyle: React.CSSProperties = {
   fontSize: '18px',
   padding: 0,
   transition: 'all 0.2s'
-};
-
-const optionRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  marginTop: '4px',
 };
 
 const checkboxLabelStyle: React.CSSProperties = {
@@ -756,4 +936,31 @@ function Tab({ label, active, onClick }: { label: string; active: boolean; onCli
   return (
     <button onClick={onClick} style={{ padding: '8px 16px', borderRadius: '10px', border: 'none', background: active ? '#3b82f6' : 'rgba(15, 23, 42, 0.5)', color: active ? '#fff' : '#64748b', fontSize: '13px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>{label}</button>
   )
-}
+};
+
+const badgeListItemStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  padding: '8px',
+  background: 'rgba(30, 41, 59, 0.4)',
+  borderRadius: '8px',
+  border: '1px solid rgba(56, 189, 248, 0.1)',
+};
+
+const badgeStyle: React.CSSProperties = {
+  fontSize: '11px',
+  fontWeight: 700,
+  color: '#38bdf8',
+  textTransform: 'uppercase',
+};
+
+const materialBoxStyle: React.CSSProperties = {
+  padding: '10px',
+  background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(56, 189, 248, 0.05) 100%)',
+  borderLeft: '3px solid #38bdf8',
+  borderRadius: '4px',
+  fontSize: '12px',
+  color: '#cbd5e1',
+  fontWeight: 500,
+};

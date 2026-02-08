@@ -1,7 +1,26 @@
 export const V4EngineModel = {
+  
+  description: {
+        title: "V4 Engine",
+        summary: "4개의 실린더가 V자 형태로 배열된 내연기관 엔진이다. 두 개씩 나뉜 실린더 뱅크가 하나의 크랭크샤프트를 공유",
+        usage: [
+          { title: "고성능 모터사이클", content: "스포츠 바이크, 레이싱 바이크,  컴팩트한 크기 + 고출력 특성" },
+          { title: "소형 자동차 및 특수 차랑", content: "엔진 공간이 제한된 차량, 균형 잡힌 출력과 진동 특성이 필요한 경우" },
+          { title: "산업·연구용 파워 유닛", content: "실험용 엔진, 고출력 대비 작은 체적이 필요한 장비" },
+        ],
+        theory: [
+          { title: "토크와 출력 관계", content: "고회전에서도 안정적인 토크 유지 가능", details: "P=T⋅ω (P:출력, T:토크, ω:각속도)" },
+          { title: "실린더 배열과 진동 이론", content: "- 실린더를 V자로 배치해 피스톤 움직임에서 생기는 진동을 서로 상쇄\n- 추가 밸런서 샤프트가 필요 없는 설계도 가능" },
+          { title: "피스톤–크랭크 메커니즘", content: "피스톤의 직선 왕복 운동을 커넥팅 로드와 크랭크샤프트를 통해 회전 운동으로 변환하는 구조" }
+        ]
+      },
+
   parts: [
     {
       id: 'Crankshaft',
+      name: 'Crankshaft',
+      material: '단조 강, 구상흑연주철',
+      desc: '- 피스톤 운동을 받아 엔진의 회전 동력을 생성\n\n- 여러 개의 크랭크 핀과 저널로 구성되어 있으며, 각 실린더에서 전달되는 힘을 회전 운동으로 변환해 차량 구동계로 전달',
       path: '/models/V4_Engine/Crankshaft.glb',
       thumbnail: '/models/V4_Engine/thumbnails/Crankshaft.png',
       assembled: { x: 0, y: 0.05, z: 0.3 },
@@ -9,7 +28,10 @@ export const V4EngineModel = {
       exploded: { x: 0, y: -0.3, z: 0 },
     },
     {
-      id: 'ConnectingRobCap_1',
+      id: 'Connecting Rod Cap',
+      name: 'Connecting Rod Cap',
+      material: '합금강, 일부-단조 강',
+      desc: '- 커넥팅 로드를 크랭크샤프트에 고정하는 하부 캡\n\n- Connecting Rod의 하단부를 분리형 구조로 만들어 크랭크샤프트에 감싸 결합\n\n- Conrod Bolt와 함께 체결되어 고속 회전 중에도 안정성을 유지',
       path: '/models/V4_Engine/ConnectingRodCap.glb',
       thumbnail: '/models/V4_Engine/thumbnails/ConnectingRodCap.png',
       assembled: { x: 0.04, y: 0.05, z: 0.1435 },
@@ -17,7 +39,10 @@ export const V4EngineModel = {
       exploded: { x: 0, y: 0.15, z: 0.25 },
     },
     {
-      id: 'ConnectingRob_1',
+      id: 'Connecting Rod',
+      name: 'Connecting Rod',
+      material: '합금강, 티타늄 합금',
+      desc: '- 피스톤의 직선 운동을 크랭크샤프트의 회전 운동으로 전달\n\n- 상단은 피스톤, 하단은 크랭크샤프트와 연결되며 엔진 동력 전달의 핵심 링크 역할\n\n- 반복적인 인장·압축 하중을 견뎌야 하므로 고강도 재질로 제작',
       path: '/models/V4_Engine/ConnectingRod.glb',
       thumbnail: '/models/V4_Engine/thumbnails/ConnectingRod.png',
       assembled: { x: 0.019, y: 0.25, z: 0.1435 },
@@ -25,7 +50,10 @@ export const V4EngineModel = {
       exploded: { x: 0, y: 0.3, z: 0.25 },
     },
     {
-      id: 'Piston_1',
+      id: 'Piston',
+      name: 'Piston',
+      material: '알루미늄 합금',
+      desc: '- 연소 압력을 받아 직선 운동을 생성\n\n- 실린더 내부에서 상하 왕복 운동을 하며, 연소 에너지를 Connecting Rod로 전달\n\n- 진 출력과 효율에 직접적인 영향을 주는 부품',
       path: '/models/V4_Engine/Piston.glb',
       thumbnail: '/models/V4_Engine/thumbnails/Piston.png',
       assembled: { x: 0.022, y: 0.223, z: 0.1435 },
@@ -33,7 +61,10 @@ export const V4EngineModel = {
       exploded: { x: 0, y: 0.45, z: 0.25 },
     },
     {
-      id: 'PistonPin_1',
+      id: 'Piston Pin',
+      name: 'Piston Pin',
+      material: '고탄소강 또는 합금강, 표면 경화 강',
+      desc: '- 피스톤과 커넥팅 로드를 회전 가능하게 연결\n\n- 피스톤 내부를 관통하여 Connecting Rod 상단과 결합되며, 운동 시 발생하는 각도 변화를 부드럽게 흡수',
       path: '/models/V4_Engine/PistonPin.glb',
       thumbnail: '/models/V4_Engine/thumbnails/PistonPin.png',
       assembled: { x: 0.018, y: 0.25, z: 0.184 },

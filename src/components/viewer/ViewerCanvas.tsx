@@ -245,7 +245,7 @@ const ViewerCanvas = forwardRef<
 
     const onClick = (e: MouseEvent) => {
       // 단일 부품 모드에서는 클릭 선택 비활성화
-      if (mode === 'single' || draggingRef.current || !refs.current) return
+      if (draggingRef.current || !refs.current) return
       
       const rect = renderer.domElement.getBoundingClientRect()
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -270,11 +270,41 @@ const ViewerCanvas = forwardRef<
     }
 
     const onPointerDown = (e: PointerEvent) => {
-      if (mode !== 'simulator' || !e.shiftKey) return
-      draggingRef.current = true
-      lastYRef.current = e.clientY
-      controls.enabled = false
+      if (!refs.current) return;
+
+      // ✅ 편집 모드: 즉시 선택 + 이동
+      if (mode === 'edit') {
+        const rect = renderer.domElement.getBoundingClientRect()
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1
+
+        raycaster.setFromCamera(mouse, camera)
+        const intersects = raycaster.intersectObjects(pickablesRef.current)
+
+        if (intersects.length > 0) {
+          const hit = intersects[0].object
+          const partId = hit.userData.partId
+          const part = partsRef.current[partId]
+
+          if (part) {
+            onSelectPart(partId)
+            transformControls.attach(part.root)
+          }
+        } else {
+          onSelectPart(null)
+          transformControls.detach()
+        }
+        return
+      }
+
+      // ✅ 시뮬레이터 모드: Shift + 드래그
+      if (mode === 'simulator' && e.shiftKey) {
+        draggingRef.current = true
+        lastYRef.current = e.clientY
+        controls.enabled = false
+      }
     }
+
 
     const onPointerMove = (e: PointerEvent) => {
       if (!draggingRef.current) return
@@ -340,11 +370,18 @@ const ViewerCanvas = forwardRef<
         if (isTarget && !p.isAdded) {
           scene.add(p.root)
           p.isAdded = true
-          p.root.position.set(0, 0, 0)
+          if (!p.root.userData._initialized) {
+            p.root.position.set(0, 0, 0)
+            p.root.userData._initialized = true
+          }
           animateAppear(p.root)
           framePart(p.root)
           transformControls.detach()
-        } else if (!isTarget && p.isAdded) {
+        } else if (
+          mode !== 'edit' &&   // ✅ 편집 모드 제외
+          !isTarget &&
+          p.isAdded
+        ) {
           scene.remove(p.root)
           p.isAdded = false
         }
