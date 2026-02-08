@@ -14,7 +14,7 @@ api.interceptors.response.use(
     // 401 에러가 났을 때
     if (err.response && err.response.status === 401) {
       
-      // [안전장치 추가] 현재 페이지가 로그인 페이지가 아닐 때만 실행
+      // 현재 페이지가 로그인 페이지가 아닐 때만 실행
       if (window.location.pathname !== '/login') {
         localStorage.removeItem("isLoggedIn");
         window.location.href = "/login";

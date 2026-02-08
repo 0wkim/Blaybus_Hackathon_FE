@@ -6,7 +6,7 @@ const LoginPage = () => {
   const { login, isLoading } = useAuth(); // isLoading도 가져와서 중복 클릭 방지
   const navigate = useNavigate();
 
-  // 1. 입력값 상태 관리
+  // 입력값 상태 관리
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,10 +22,10 @@ const LoginPage = () => {
       return;
     }
 
-    // 2. AuthProvider의 login 함수 호출 (성공 여부 반환)
+    // AuthProvider의 login 함수 호출 (성공 여부 반환)
     const success = await login(email, password);
     
-    // 3. 성공 시 대시보드 이동
+    // 성공 시 대시보드 이동
     if (success) {
       navigate("/dashboard");
     } else {
