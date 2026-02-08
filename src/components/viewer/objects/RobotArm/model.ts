@@ -90,8 +90,8 @@ export const RobotArmModel = {
       exploded: { x: 0, y: 1.8, z: 1.4 },
     },
     {
-      id: 'Gripper Finge',
-      name: 'Gripper Finger',
+      id: 'Gripper Finger L',
+      name: 'Gripper Finger (L)',
       material: '탄소강, 합금강, 알루미늄 합금강, 점촉부분-고무, 우레탄패드',
       desc: '그리퍼에서 물체를 직접 집는 가동 조로, 파지력과 안정성을 결정하는 핵심 부품',
       path: '/models/RobotArm/Part8.glb',
@@ -101,7 +101,7 @@ export const RobotArmModel = {
       exploded: { x: -0.3, y: 2.1, z: 1.8 }, 
     },
     {
-      id: 'Gripper Finge',
+      id: 'Gripper Finger R',
       name: 'Gripper Finger (R)',
       material: '탄소강, 합금강, 알루미늄 합금강, 점촉부분-고무, 우레탄패드',
       desc: '그리퍼에서 물체를 직접 집는 가동 조로, 파지력과 안정성을 결정하는 핵심 부품',

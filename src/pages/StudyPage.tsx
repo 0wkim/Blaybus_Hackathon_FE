@@ -214,7 +214,7 @@ export default function StudyPage() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <Tab label="단일 부품" active={viewMode === 'single'} onClick={() => setViewMode('single')} />
               <Tab label="조립도" active={viewMode === 'assembly'} onClick={() => setViewMode('assembly')} />
-              <Tab label="편집" active={viewMode === 'edit'} onClick={() => setViewMode('edit')} />
+              <Tab label="조립 가이드" active={viewMode === 'edit'} onClick={() => setViewMode('edit')} />
               <Tab label="시뮬레이터" active={viewMode === 'simulator'} onClick={() => setViewMode('simulator')} />
             </div>
             <button onClick={() => setIsExpanded(!isExpanded)} style={expandBtnStyle}>
@@ -273,14 +273,14 @@ export default function StudyPage() {
             {viewMode === 'edit' && (
               <div style={guideWrapperStyle}>
                 <button onClick={() => setShowEditGuide(!showEditGuide)} style={guideToggleBtnStyle}>
-                   {showEditGuide ? '▽ 편집 가이드 닫기' : '△ 편집 가이드 열기'}
+                   {showEditGuide ? '▽ 조립 가이드 닫기' : '△ 조립 가이드 열기'}
                 </button>
                 {showEditGuide && (
                   <div style={guideContentStyle}>
-                    <div style={guideSectionTitleStyle}>🛠️ 편집 모드 조작</div>
+                    <div style={guideSectionTitleStyle}>🧩 단계별 조립 모드</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><span>🖱️ 좌클릭 : <span style={highlightTextStyle}>부품 선택</span></span></div>
-                      <div style={guideRowStyle}><span>🖱️ 드래그 : <span style={highlightTextStyle}>부품 이동</span></span></div>
+                      <div style={guideRowStyle}><span>🖱️ 부품 클릭 : <span style={highlightTextStyle}>제자리로 조립</span></span></div>
+                      <div style={guideRowStyle}><span>🔄 초기화 버튼 : <span style={highlightTextStyle}>전체 분해</span></span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>⌨️</span> 단축키</div>
@@ -288,7 +288,7 @@ export default function StudyPage() {
                       <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>전체화면</span></div>
                     </div>
                     <div style={dividerStyle} />
-                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>빈 공간 클릭 시 선택 해제</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>부품을 클릭하여 조립도를 완성해 보세요.</div>
                   </div>
                 )}
               </div>
@@ -298,11 +298,9 @@ export default function StudyPage() {
               <div style={singleModeContainerStyle}>
                 {viewMode === 'single' && (
                   <div id="part-list-sidebar" style={singleSidebarStyle}>
+                    {/* ✅ 중복 제거 filter 로직 삭제하여 모든 부품 표시 */}
                     {currentModel.parts
-                      .filter((p: any, index: number, self: any[]) => 
-                        p.thumbnail && p.thumbnail.trim() !== "" &&
-                        self.findIndex(t => t.thumbnail === p.thumbnail) === index
-                      )
+                      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "")
                       .map((p: any) => (
                         <div key={p.id} style={singleSidebarItemStyle(activeSinglePartId === p.id)} onClick={() => setActiveSinglePartId(p.id)}>
                           <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.id} />
@@ -344,7 +342,6 @@ export default function StudyPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           <section>
                             <h4 style={infoTitleStyle}>설명</h4>
-                            {/* 색상 통일: #e2e8f0 */}
                             <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{currentModel.description.summary}</p>
                           </section>
                           
@@ -354,7 +351,6 @@ export default function StudyPage() {
                               {currentModel.description.usage.map((item: any) => (
                                 <div key={item.title} style={badgeListItemStyle}>
                                   <span style={badgeStyle}>{item.title}</span>
-                                  {/* 색상 통일: #e2e8f0 */}
                                   <span style={{ 
                                     fontSize: '11px', 
                                     color: '#e2e8f0', 
@@ -374,7 +370,6 @@ export default function StudyPage() {
                               {currentModel.description.theory.map((t: any) => (
                                 <div key={t.title} style={badgeListItemStyle}>
                                   <span style={badgeStyle}>{t.title}</span>
-                                  {/* 색상 통일: #e2e8f0 */}
                                   <span style={{ 
                                     fontSize: '11px', 
                                     color: '#e2e8f0', 
@@ -383,7 +378,6 @@ export default function StudyPage() {
                                   }}>
                                     {t.content}
                                   </span>
-                                  {/* 추가 상세 정보 - 포인트 컬러 유지 */}
                                   {t.details && (
                                     <div style={{ 
                                       marginTop: '4px',
@@ -413,7 +407,6 @@ export default function StudyPage() {
                               </section>
                               <section>
                                 <h4 style={infoTitleStyle}>상세 설명</h4>
-                                {/* 색상 통일: #e2e8f0 */}
                                 <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{selectedPart.desc}</p>
                               </section>
                             </>

@@ -77,7 +77,7 @@ export const RobotGripperModel = {
     },
     {
       id: 'Link L',
-      name: 'Link',
+      name: 'Link (L)',
       material: '알루미늄 합금, 탄소강',
       desc: '- 회전 → 직선/대칭 운동 변환\n\n- 기어의 회전을 집게의 개폐 운동으로 바꾸는 연결 부품\n\n- 좌우 대칭 움직임을 만들어 파지 중심을 유지',
       path: '/models/RobotGripper/Link.glb',
@@ -89,7 +89,7 @@ export const RobotGripperModel = {
     },
     {
       id: 'Link R',
-      name: 'Link',
+      name: 'Link (R)',
       material: '알루미늄 합금, 탄소강',
       desc: '- 회전 → 직선/대칭 운동 변환\n\n- 기어의 회전을 집게의 개폐 운동으로 바꾸는 연결 부품\n\n- 좌우 대칭 움직임을 만들어 파지 중심을 유지',
       path: '/models/RobotGripper/Link.glb',
@@ -101,7 +101,7 @@ export const RobotGripperModel = {
     },
     {
       id: 'Gripper L',
-      name: 'Gripper',
+      name: 'Gripper (L)',
       material: '알루미늄 합금, 스테인리스강',
       desc: '- 물체 파지(집기)\n\n- 좌우로 움직이는 집게로 구성되며, 링크·기어의 동작을 받아 물체를 안정적으로 잡고 놓는 역할 수행',
       path: '/models/RobotGripper/Gripper.glb',
@@ -113,7 +113,7 @@ export const RobotGripperModel = {
     },
     {
       id: 'Gripper R',
-      name: 'Gripper',
+      name: 'Gripper (R)',
       material: '알루미늄 합금, 스테인리스강',
       desc: '- 물체 파지(집기)\n\n- 좌우로 움직이는 집게로 구성되며, 링크·기어의 동작을 받아 물체를 안정적으로 잡고 놓는 역할 수행',
       path: '/models/RobotGripper/Gripper.glb',
@@ -125,8 +125,8 @@ export const RobotGripperModel = {
     },
     // --- Pins (위치에 따라 그룹핑하여 배치) ---
     {
-      id: 'Pin', // Base/Mount 근처 핀 (Left)
-      name: 'Pin',
+      id: 'Pin 1', // Base/Mount 근처 핀 (Left)
+      name: 'Pin 1',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -136,7 +136,7 @@ export const RobotGripperModel = {
       exploded: { x: -0.08, y: -0.15, z: 0.05 },
     },
     {
-      id: 'Pin', // Base/Mount 근처 핀 (Right)
+      id: 'Pin 2', // Base/Mount 근처 핀 (Right)
       name: 'Pin',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
@@ -147,8 +147,8 @@ export const RobotGripperModel = {
       exploded: { x: 0.08, y: -0.15, z: 0.05 },
     },
     {
-      id: 'Pin', // GearLink_1 연결 핀 (Left)
-      name: 'Pin',
+      id: 'Pin 3', // GearLink_1 연결 핀 (Left)
+      name: 'Pin 3',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -158,8 +158,8 @@ export const RobotGripperModel = {
       exploded: { x: -0.15, y: 0.1, z: 0.05 },
     },
     {
-      id: 'Pin', // GearLink_2 연결 핀 (Right)
-      name: 'Pin',
+      id: 'Pin 4', // GearLink_2 연결 핀 (Right)
+      name: 'Pin 4',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -169,8 +169,8 @@ export const RobotGripperModel = {
       exploded: { x: 0.15, y: 0.1, z: 0.05 },
     },
     {
-      id: 'Pin', // 중간 관절 핀 (Right)
-      name: 'Pin',
+      id: 'Pin 5', // 중간 관절 핀 (Right)
+      name: 'Pin 5',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -180,8 +180,8 @@ export const RobotGripperModel = {
       exploded: { x: 0.18, y: 0.25, z: 0.05 },
     },
     {
-      id: 'Pin', // 중간 관절 핀 (Left)
-      name: 'Pin',
+      id: 'Pin 6', // 중간 관절 핀 (Left)
+      name: 'Pin 6',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -191,8 +191,8 @@ export const RobotGripperModel = {
       exploded: { x: -0.18, y: 0.25, z: 0.05 },
     },
     {
-      id: 'Pin', // 상단 링크 핀 (Left - Link와 Gripper 사이)
-      name: 'Pin',
+      id: 'Pin 7', // 상단 링크 핀 (Left - Link와 Gripper 사이)
+      name: 'Pin 7',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -202,8 +202,8 @@ export const RobotGripperModel = {
       exploded: { x: -0.22, y: 0.35, z: 0.05 },
     },
     {
-      id: 'Pin', // 상단 링크 핀 (Right - Link와 Gripper 사이)
-      name: 'Pin',
+      id: 'Pin 8', // 상단 링크 핀 (Right - Link와 Gripper 사이)
+      name: 'Pin 8',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -213,8 +213,8 @@ export const RobotGripperModel = {
       exploded: { x: 0.22, y: 0.35, z: 0.05 },
     },
     {
-      id: 'Pin', // 그리퍼 끝단 핀 (Right)
-      name: 'Pin',
+      id: 'Pin 9', // 그리퍼 끝단 핀 (Right)
+      name: 'Pin 9',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',
@@ -224,8 +224,8 @@ export const RobotGripperModel = {
       exploded: { x: 0.25, y: 0.4, z: 0.05 },
     },
     {
-      id: 'Pin', // 그리퍼 끝단 핀 (Left)
-      name: 'Pin',
+      id: 'Pin 10', // 그리퍼 끝단 핀 (Left)
+      name: 'Pin 10',
       material: '경화강, 합금강 + 표면 경화',
       desc: '- 회전 힌지(축)\n\n- 링크와 집게, 기어를 연결하는 회전축으로, 마찰을 최소화하며 반복 동작의 내구성을 확보',
       path: '/models/RobotGripper/Pin.glb',

@@ -49,7 +49,6 @@ const ViewerCanvas = forwardRef<
     rafId: number
   } | null>(null)
 
-  /** ================== 데이터 및 상태 관리 ================== */
   const partsRef = useRef<Record<string, {
     root: THREE.Group
     assembled: THREE.Vector3
@@ -65,6 +64,22 @@ const ViewerCanvas = forwardRef<
   const explodeRef = useRef(0)
   const draggingRef = useRef(false)
   const lastYRef = useRef(0)
+
+  // 조립 애니메이션 함수
+  const animatePartToPosition = (obj: THREE.Object3D, targetPos: THREE.Vector3) => {
+    let startTime: number | null = null;
+    const startPos = obj.position.clone();
+    const duration = 600;
+
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const ease = 1 - Math.pow(2, -10 * progress);
+      obj.position.lerpVectors(startPos, targetPos, ease);
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  };
 
   useImperativeHandle(ref, () => ({
     zoomIn() {
@@ -92,9 +107,9 @@ const ViewerCanvas = forwardRef<
 
       explodeRef.current = 0
       Object.entries(partsRef.current).forEach(([id, p]) => {
-        p.root.position.copy(p.assembled)
-        if(simFromRef.current[id]) simFromRef.current[id].copy(p.assembled)
-        if(simToRef.current[id]) simToRef.current[id].copy(p.exploded)
+        p.root.position.copy(p.exploded) 
+        if(simFromRef.current[id]) simFromRef.current[id].copy(p.exploded)
+        if(simToRef.current[id]) simToRef.current[id].copy(p.assembled)
       })
     },
     getCameraState() {
@@ -167,7 +182,6 @@ const ViewerCanvas = forwardRef<
     return () => ro.disconnect()
   }, [isExpanded])
 
-  /* ================= Scene & Interaction Setup ================= */
   useLayoutEffect(() => {
     if (!mountRef.current) return
     const width = mountRef.current.clientWidth
@@ -211,7 +225,9 @@ const ViewerCanvas = forwardRef<
         const wrapper = new THREE.Group()
         if (p.rotation) root.rotation.set(p.rotation.x, p.rotation.y, p.rotation.z)
         wrapper.add(root)
-        wrapper.position.set(p.assembled.x, p.assembled.y, p.assembled.z)
+        
+        const startPos = mode === 'edit' ? p.exploded : p.assembled
+        wrapper.position.set(startPos.x, startPos.y, startPos.z)
 
         root.traverse((obj: any) => {
           if (!obj.isMesh) return
@@ -233,8 +249,8 @@ const ViewerCanvas = forwardRef<
         const exploded = new THREE.Vector3(p.exploded.x, p.exploded.y, p.exploded.z)
 
         partsRef.current[p.id] = { root: wrapper, assembled, exploded, isAdded: false }
-        simFromRef.current[p.id] = assembled.clone()
-        simToRef.current[p.id] = exploded.clone()
+        simFromRef.current[p.id] = mode === 'edit' ? exploded.clone() : assembled.clone()
+        simToRef.current[p.id] = mode === 'edit' ? assembled.clone() : exploded.clone()
 
         if (mode !== 'single') {
           scene.add(wrapper)
@@ -244,7 +260,6 @@ const ViewerCanvas = forwardRef<
     })
 
     const onClick = (e: MouseEvent) => {
-      // 단일 부품 모드에서는 클릭 선택 비활성화
       if (draggingRef.current || !refs.current) return
       
       const rect = renderer.domElement.getBoundingClientRect()
@@ -258,11 +273,6 @@ const ViewerCanvas = forwardRef<
         const hit = intersects[0].object
         const partId = hit.userData.partId
         onSelectPart(partId)
-        
-        if (mode === 'edit') {
-          const part = partsRef.current[partId]
-          if (part) transformControls.attach(part.root)
-        }
       } else {
         onSelectPart(null)
         transformControls.detach()
@@ -272,7 +282,6 @@ const ViewerCanvas = forwardRef<
     const onPointerDown = (e: PointerEvent) => {
       if (!refs.current) return;
 
-      // ✅ 편집 모드: 즉시 선택 + 이동
       if (mode === 'edit') {
         const rect = renderer.domElement.getBoundingClientRect()
         mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1
@@ -285,26 +294,22 @@ const ViewerCanvas = forwardRef<
           const hit = intersects[0].object
           const partId = hit.userData.partId
           const part = partsRef.current[partId]
-
           if (part) {
             onSelectPart(partId)
-            transformControls.attach(part.root)
+            animatePartToPosition(part.root, part.assembled)
           }
         } else {
           onSelectPart(null)
-          transformControls.detach()
         }
         return
       }
 
-      // ✅ 시뮬레이터 모드: Shift + 드래그
       if (mode === 'simulator' && e.shiftKey) {
         draggingRef.current = true
         lastYRef.current = e.clientY
         controls.enabled = false
       }
     }
-
 
     const onPointerMove = (e: PointerEvent) => {
       if (!draggingRef.current) return
@@ -357,7 +362,6 @@ const ViewerCanvas = forwardRef<
     }
   }, [model.id, mode])
 
-  /* ================= 상태 변화에 따른 부품 가시성 & 하이라이트 제어 ================= */
   useEffect(() => {
     if (!refs.current) return
     const { scene, transformControls } = refs.current
@@ -366,27 +370,26 @@ const ViewerCanvas = forwardRef<
       const isTarget = selectedPartId === id
 
       if (mode === 'single') {
-        // 단일 모드 가시성 제어
-        if (isTarget && !p.isAdded) {
-          scene.add(p.root)
-          p.isAdded = true
-          if (!p.root.userData._initialized) {
+        // ✅ [수정 지점] 단일 부품 모드에서 가시성 제어
+        if (isTarget) {
+          if (!p.isAdded) {
+            scene.add(p.root)
+            p.isAdded = true
+            // 초기 중앙 정렬
             p.root.position.set(0, 0, 0)
-            p.root.userData._initialized = true
+            animateAppear(p.root)
+            framePart(p.root)
           }
-          animateAppear(p.root)
-          framePart(p.root)
           transformControls.detach()
-        } else if (
-          mode !== 'edit' &&   // ✅ 편집 모드 제외
-          !isTarget &&
-          p.isAdded
-        ) {
-          scene.remove(p.root)
-          p.isAdded = false
+        } else {
+          // 선택되지 않은 부품은 무조건 제거 (중복된 부품 ID라도 선택된 것만 남김)
+          if (p.isAdded) {
+            scene.remove(p.root)
+            p.isAdded = false
+          }
         }
 
-        // 단일 부품 모드에서는 하이라이트(Emissive) 미적용
+        // 하이라이트 초기화 (단일 모드에서는 기본 재질 선호)
         p.root.traverse((obj: any) => {
           if (!obj.isMesh) return
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
@@ -401,14 +404,12 @@ const ViewerCanvas = forwardRef<
           })
         })
       } else {
-        // 일반 모드 가시성 제어
+        // 일반 모드 (조립도, 편집, 시뮬레이터)
         if (!p.isAdded) {
           scene.add(p.root)
           p.isAdded = true
-          p.root.position.copy(p.assembled)
         }
 
-        // 일반 모드 하이라이트 및 Ghost 효과 적용
         p.root.traverse((obj: any) => {
           if (!obj.isMesh) return
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
@@ -417,7 +418,7 @@ const ViewerCanvas = forwardRef<
             if (!snap) return
 
             if (isTarget) {
-              m.emissive.setHex(0x38bdf8) // 하늘색 발광
+              m.emissive.setHex(0x38bdf8)
               m.emissiveIntensity = 0.5
             } else {
               m.emissive.copy(snap.emissive)
