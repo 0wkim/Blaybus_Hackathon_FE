@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ViewerCanvas from '../components/viewer/ViewerCanvas'
 import type { ViewerCanvasHandle } from '../components/viewer/ViewerCanvas'
@@ -41,10 +41,13 @@ export default function StudyPage() {
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
 
-  // 탭 변경 시 기본 설정
+  // 'edit' 모드에서도 ghost를 false로 두어 드래그 시 충돌 방지
   useEffect(() => {
-    if (viewMode === 'single') setGhost(false);
-    else setGhost(true);
+    if (viewMode === 'single' || viewMode === 'edit') {
+      setGhost(false);
+    } else {
+      setGhost(true);
+    }
   }, [viewMode]);
 
   useEffect(() => {
@@ -85,6 +88,17 @@ export default function StudyPage() {
     }, 1000);
     return () => clearInterval(saveInterval);
   }, [viewMode, storageKey]);
+
+  // 핸들러 안정화 (useCallback)
+  // ViewerCanvas가 불필요하게 리렌더링되어 드래그가 끊기는 현상 방지
+  const handleSinglePartSelect = useCallback((id: string | null) => {
+    setActiveSinglePartId(id);
+  }, []);
+
+  const handleMultiPartSelect = useCallback((id: string | null) => {
+    setSelectedPartId(id);
+  }, []);
+
 
   return (
     <div style={containerStyle}>
@@ -207,7 +221,8 @@ export default function StudyPage() {
                       model={currentModel} 
                       ghost={ghost} 
                       selectedPartId={viewMode === 'single' ? activeSinglePartId : selectedPartId} 
-                      onSelectPart={viewMode === 'single' ? setActiveSinglePartId : setSelectedPartId} 
+                      /* 안정된 핸들러 전달 */
+                      onSelectPart={viewMode === 'single' ? handleSinglePartSelect : handleMultiPartSelect} 
                       isExpanded={isExpanded} 
                       mode={viewMode} 
                     />
@@ -240,7 +255,8 @@ export default function StudyPage() {
                 model={currentModel}
                 ghost={ghost} 
                 selectedPartId={selectedPartId}
-                onSelectPart={setSelectedPartId}
+                /* 안정된 핸들러 전달 */
+                onSelectPart={handleMultiPartSelect}
                 isExpanded={isExpanded}
                 mode={viewMode}
               />
@@ -315,10 +331,7 @@ export default function StudyPage() {
   )
 }
 
-// ---------------------------------------------------------
-// 스타일 정의 
-// ---------------------------------------------------------
-
+// 스타일 정의
 const containerStyle: React.CSSProperties = {
   height: '100vh',
   display: 'flex',
