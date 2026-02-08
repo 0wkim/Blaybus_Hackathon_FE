@@ -8,7 +8,16 @@ const LoginPage = () => {
 
   // 입력값 상태 관리
   const [email, setEmail] = useState("");
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setEmail(value);
+
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      setIsValid(emailRegex.test(value));
+    };
+
   const [password, setPassword] = useState("");
+  const [isValid, setIsValid] = useState(true);
 
   useEffect(() => {
     document.body.style.margin = '0';
@@ -59,10 +68,21 @@ const LoginPage = () => {
           <input 
             type="email" 
             placeholder="example@email.com" 
-            style={styles.input} 
-            value={email} // 상태 연결
-            onChange={(e) => setEmail(e.target.value)} // 입력 감지
+            style={{
+              ...styles.input,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: isValid ? 'rgba(255, 255, 255, 0.1)' : '#ef4444',
+              transition: 'border-color 0.2s ease',
+            }} 
+            value={email}
+            onChange={handleEmailChange}
           />
+          {email !== '' && !isValid && (
+            <span style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+              올바른 이메일 형식이 아닙니다.
+            </span>
+          )}
         </div>
 
         {/* 입력 필드: 비밀번호 */}

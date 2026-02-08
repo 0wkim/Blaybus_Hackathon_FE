@@ -8,6 +8,16 @@ const SignupPage = () => {
   // 1. 입력값 상태 관리
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [isValid, setIsValid] = useState(true);
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    setIsValid(emailRegex.test(value));
+  };
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -85,10 +95,21 @@ const SignupPage = () => {
           <input 
             type="email" 
             placeholder="example@email.com" 
-            style={styles.input}
+            style={{
+              ...styles.input,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+              borderColor: isValid ? 'rgba(255, 255, 255, 0.1)' : '#ef4444',
+              transition: 'border-color 0.2s ease', 
+            }}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
           />
+          {!isValid && (
+            <span style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+              올바른 이메일 형식이 아닙니다.
+            </span>
+          )}
         </div>
 
         {/* 비밀번호 입력 */}
@@ -118,8 +139,14 @@ const SignupPage = () => {
         {/* 회원가입 버튼 */}
         <button 
           onClick={handleSignup} 
-          style={{...styles.signupButton, opacity: isLoading ? 0.7 : 1}}
-          disabled={isLoading}
+          style={{
+            ...styles.signupButton, 
+            // 로딩 중이거나 이메일 형식이 맞지 않으면 불투명도를 낮춰 비활성화 시각화
+            opacity: (isLoading || !isValid || !email) ? 0.5 : 1,
+            cursor: (isLoading || !isValid || !email) ? 'not-allowed' : 'pointer'
+          }}
+          // 로딩 중이거나, 이메일이 유효하지 않거나, 이메일이 비어있으면 버튼 클릭 막기
+          disabled={isLoading || !isValid || !email}
         >
           {isLoading ? "가입 처리 중..." : (
             <>
