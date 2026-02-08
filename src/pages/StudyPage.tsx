@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ViewerCanvas from '../components/viewer/ViewerCanvas'
 import type { ViewerCanvasHandle } from '../components/viewer/ViewerCanvas'
@@ -41,6 +41,15 @@ export default function StudyPage() {
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
 
+  // 'edit' 모드에서도 ghost를 false로 두어 드래그 시 충돌 방지
+  useEffect(() => {
+    if (viewMode === 'single' || viewMode === 'edit') {
+      setGhost(false);
+    } else {
+      setGhost(true);
+    }
+  }, [viewMode]);
+
   useEffect(() => {
     setSelectedPartId(null);
     setActiveSinglePartId(null);
@@ -79,6 +88,17 @@ export default function StudyPage() {
     }, 1000);
     return () => clearInterval(saveInterval);
   }, [viewMode, storageKey]);
+
+  // 핸들러 안정화 (useCallback)
+  // ViewerCanvas가 불필요하게 리렌더링되어 드래그가 끊기는 현상 방지
+  const handleSinglePartSelect = useCallback((id: string | null) => {
+    setActiveSinglePartId(id);
+  }, []);
+
+  const handleMultiPartSelect = useCallback((id: string | null) => {
+    setSelectedPartId(id);
+  }, []);
+
 
   return (
     <div style={containerStyle}>
@@ -145,7 +165,7 @@ export default function StudyPage() {
                     <div style={dividerStyle} />
                     <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>⌨️</span> 단축키</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><kbd style={kbdStyle}>Shift</kbd><span> + 드래그 : <span style={highlightTextStyle}>분해</span></span></div>
+                      <div style={guideRowStyle}><kbd style={kbdStyle}>Shift</kbd><span> + 드래그 : <span style={highlightTextStyle}>분해 / 조립</span></span></div>
                       <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>전체화면</span></div>
                     </div>
                   </div>
@@ -166,56 +186,77 @@ export default function StudyPage() {
                       <div style={guideRowStyle}><span>🖱️ 드래그 : <span style={highlightTextStyle}>부품 이동</span></span></div>
                     </div>
                     <div style={dividerStyle} />
+                    <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>⌨️</span> 단축키</div>
+                    <div style={guideItemStyle}>
+                      <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>전체화면</span></div>
+                    </div>
+                    <div style={dividerStyle} />
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>빈 공간 클릭 시 선택 해제</div>
                   </div>
                 )}
               </div>
             )}
 
-            {viewMode === 'single' ? (
+            {(viewMode === 'single' || viewMode === 'assembly') ? (
               <div style={singleModeContainerStyle}>
-                <div id="part-list-sidebar" style={singleSidebarStyle}>
-                  {currentModel.parts
-                    .filter((p: any, index: number, self: any[]) => 
-                      p.thumbnail && p.thumbnail.trim() !== "" &&
-                      self.findIndex(t => t.thumbnail === p.thumbnail) === index
-                    )
-                    .map((p: any) => (
-                      <div key={p.id} style={singleSidebarItemStyle(activeSinglePartId === p.id)} onClick={() => setActiveSinglePartId(p.id)}>
-                        <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.id} />
-                      </div>
-                    ))}
-                </div>
+                {viewMode === 'single' && (
+                  <div id="part-list-sidebar" style={singleSidebarStyle}>
+                    {currentModel.parts
+                      .filter((p: any, index: number, self: any[]) => 
+                        p.thumbnail && p.thumbnail.trim() !== "" &&
+                        self.findIndex(t => t.thumbnail === p.thumbnail) === index
+                      )
+                      .map((p: any) => (
+                        <div key={p.id} style={singleSidebarItemStyle(activeSinglePartId === p.id)} onClick={() => setActiveSinglePartId(p.id)}>
+                          <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.id} />
+                        </div>
+                      ))}
+                  </div>
+                )}
+
                 <div style={singleViewerAreaStyle}>
                     <ViewerCanvas 
-                      key="viewer-single" // Key를 주어 탭 이동 시 확실히 재부팅
+                      key={viewMode}
                       ref={viewerRef} 
                       model={currentModel} 
-                      ghost={false} 
-                      selectedPartId={activeSinglePartId} 
-                      onSelectPart={setActiveSinglePartId} 
+                      ghost={ghost} 
+                      selectedPartId={viewMode === 'single' ? activeSinglePartId : selectedPartId} 
+                      /* 안정된 핸들러 전달 */
+                      onSelectPart={viewMode === 'single' ? handleSinglePartSelect : handleMultiPartSelect} 
                       isExpanded={isExpanded} 
-                      mode={'single'} 
+                      mode={viewMode} 
                     />
-                    <div style={centerPartLabelStyle}>{activeSinglePartId || "Select a Part"}</div>
+                    {viewMode === 'single' && (
+                      <div style={centerPartLabelStyle}>
+                        {activeSinglePartId || "Select a Part"}
+                      </div>
+                    )}
                 </div>
+
                 <div style={singleInfoPanelStyle}>
                     <div style={infoBoxStyle}>
-                        <h3 style={partNameTitleStyle}>{activeSinglePartId || "Select a Part"}</h3>
+                        <h3 style={partNameTitleStyle}>
+                          {viewMode === 'single' ? (activeSinglePartId || "Select a Part") : (selectedPartId || "전체 조립도")}
+                        </h3>
                         <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
                         <h4 style={infoTitleStyle}>설명 (Description)</h4>
-                        <p style={infoContentStyle}>{activeSinglePartId ? `${activeSinglePartId} 부품 상세 설명입니다.` : "목록에서 부품을 선택하세요."}</p>
+                        <p style={infoContentStyle}>
+                          {viewMode === 'single' 
+                            ? (activeSinglePartId ? `${activeSinglePartId} 부품 상세 설명입니다.` : "목록에서 부품을 선택하세요.")
+                            : (selectedPartId ? `${selectedPartId} 부품의 조립 위치 정보입니다.` : "모델 전체의 구조를 확인 중입니다.")}
+                        </p>
                     </div>
                 </div>
               </div>
             ) : (
               <ViewerCanvas
-                key="viewer-multi" // Key를 분리하여 단일 모드와 섞이지 않게 함
+                key="viewer-multi"
                 ref={viewerRef}
                 model={currentModel}
                 ghost={ghost} 
                 selectedPartId={selectedPartId}
-                onSelectPart={setSelectedPartId}
+                /* 안정된 핸들러 전달 */
+                onSelectPart={handleMultiPartSelect}
                 isExpanded={isExpanded}
                 mode={viewMode}
               />
@@ -225,13 +266,11 @@ export default function StudyPage() {
 
         {!isExpanded && (
           <aside style={rightPanelStyle}>
-            {/* AI Assistant 섹션에 flex: 1을 주어 메모가 줄어들면 확장되게 합니다. */}
             <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
                 <div style={statusDotStyle(!!(selectedPartId || activeSinglePartId))} />
               </div>
-              {/* AI 내용 영역도 남은 공간을 채우도록 설정 */}
               <div style={{ ...aiStatusStyle, flex: 1, alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '14px', color: (selectedPartId || activeSinglePartId) ? '#e2e8f0' : '#64748b' }}>
                   {(viewMode === 'single' ? activeSinglePartId : selectedPartId) 
@@ -242,19 +281,25 @@ export default function StudyPage() {
               {viewMode !== 'single' && (
                 <div style={{ ...optionRowStyle, marginTop: '16px' }}>
                   <label style={checkboxLabelStyle}>
-                    <input type="checkbox" checked={ghost} onChange={(e) => setGhost(e.target.checked)} style={{ accentColor: '#38bdf8' }} /> 
-                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>Ghost Mode 활성화</span>
+                    <input
+                      type="checkbox"
+                      checked={ghost}
+                      onChange={(e) => setGhost(e.target.checked)}
+                      style={{ accentColor: '#38bdf8' }}
+                    />
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                      Ghost Mode 활성화
+                    </span>
                   </label>
                 </div>
               )}
             </section>
 
-            {/* Memo 섹션: 닫혔을 때(isMemoOpen: false) 높이를 고정하여 바닥으로 밀어냅니다. */}
             <section style={{ 
               ...memoSectionStyle, 
               flex: isMemoOpen ? 1 : '0 0 auto', 
-              maxHeight: isMemoOpen ? 'none' : '60px', // 타이틀만 보일 정도의 높이
-              transition: 'all 0.3s ease' // 부드러운 전환 효과
+              maxHeight: isMemoOpen ? 'none' : '60px',
+              transition: 'all 0.3s ease'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMemoOpen ? '16px' : 0 }}>
                 <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>Memo</h3>
@@ -286,10 +331,7 @@ export default function StudyPage() {
   )
 }
 
-// ---------------------------------------------------------
-// 스타일 정의 (가시성을 위해 줄바꿈 보강)
-// ---------------------------------------------------------
-
+// 스타일 정의
 const containerStyle: React.CSSProperties = {
   height: '100vh',
   display: 'flex',
@@ -698,7 +740,7 @@ const dividerStyle: React.CSSProperties = {
 };
 
 const assemblyNoticeStyle: React.CSSProperties = {
-  width: '340px',
+  width: '390px',
   padding: '12px 16px',
   background: 'rgba(15, 23, 42, 0.85)',
   backdropFilter: 'blur(12px)',
