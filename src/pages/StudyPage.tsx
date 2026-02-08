@@ -107,6 +107,12 @@ export default function StudyPage() {
         #part-list-sidebar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.1); border-radius: 10px; }
         #part-list-sidebar::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
         #part-list-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
+
+
+        #info-scroll-area::-webkit-scrollbar { width: 4px; }
+        #info-scroll-area::-webkit-scrollbar-track { background: transparent; }
+        #info-scroll-area::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.3); border-radius: 10px; }
+        #info-scroll-area::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.6); }
       `}</style>
 
       <Header />
@@ -234,18 +240,28 @@ export default function StudyPage() {
                 </div>
 
                 <div style={singleInfoPanelStyle}>
-                    <div style={infoBoxStyle}>
-                        <h3 style={partNameTitleStyle}>
-                          {viewMode === 'single' ? (activeSinglePartId || "Select a Part") : (selectedPartId || "전체 조립도")}
-                        </h3>
-                        <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
-                        <h4 style={infoTitleStyle}>설명 (Description)</h4>
-                        <p style={infoContentStyle}>
-                          {viewMode === 'single' 
-                            ? (activeSinglePartId ? `${activeSinglePartId} 부품 상세 설명입니다.` : "목록에서 부품을 선택하세요.")
-                            : (selectedPartId ? `${selectedPartId} 부품의 조립 위치 정보입니다.` : "모델 전체의 구조를 확인 중입니다.")}
-                        </p>
+                  <div style={infoBoxStyle}>
+                    {/* 제목은 고정 (스크롤 안 됨) */}
+                    <h3 style={partNameTitleStyle}>
+                      {viewMode === 'single' 
+                        ? (currentModel.parts.find((p: any) => p.id === activeSinglePartId)?.name || "부품을 선택하세요")
+                        : (currentModel.title || "전체 조립도")} 
+                    </h3>
+                    
+                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '12px 0' }} />
+                    <h4 style={infoTitleStyle}>설명 (Description)</h4>
+
+                    {/* 여기서부터 아래 내용만 스크롤됨 */}
+                    <div style={infoScrollAreaStyle} id="info-scroll-area">
+                      <p style={infoContentStyle}>
+                        {viewMode === 'single' 
+                          ? (currentModel.parts.find((p: any) => p.id === activeSinglePartId)?.description || "상세 설명이 여기에 표시됩니다.")
+                          : (currentModel.description || "이 모델의 전체 구조 정보입니다.")}
+                      </p>
+                      
+                      {/* 내용이 아주 많아질 경우를 대비해 예시 텍스트를 더 넣어도 이 영역 안에서만 스크롤됩니다. */}
                     </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -454,10 +470,18 @@ const infoBoxStyle: React.CSSProperties = {
   background: 'rgba(255, 255, 255, 0.05)',
   borderRadius: '12px',
   padding: '16px',
-  flex: 1,
+  flex: 1, // 부모 컨테이너 안에서 가득 차게 설정
   border: '1px solid rgba(255, 255, 255, 0.1)',
   display: 'flex',
   flexDirection: 'column',
+  overflow: 'hidden', // 전체 박스가 넘어가는 걸 방지
+};
+
+const infoScrollAreaStyle: React.CSSProperties = {
+  flex: 1,
+  overflowY: 'auto', // 내용이 많으면 자동으로 스크롤 생성
+  paddingRight: '4px', // 스크롤바와 텍스트 간격
+  marginTop: '12px',
 };
 
 const partNameTitleStyle: React.CSSProperties = {
@@ -479,6 +503,7 @@ const infoContentStyle: React.CSSProperties = {
   fontSize: '13px',
   color: '#94a3b8',
   lineHeight: 1.5,
+  whiteSpace: 'pre-wrap',
 };
 
 const rightPanelStyle: React.CSSProperties = {
