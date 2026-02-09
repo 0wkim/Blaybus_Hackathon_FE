@@ -91,34 +91,134 @@ const AIAssistantPanel = ({
 
 
 // ----------------------------------------------------------------------
-// Main Page Component
+// Constants & Types
 // ----------------------------------------------------------------------
-const MODEL_DATA: Record<string, any> = {
+
+const MODEL_UUID_MAP: Record<string, string> = {
+  suspension: "AKDJioICRyeqJLvHlyRcLA",
+  v4engine: "oitBLJDNRZ2GpKh8kYcUgg",
+  robotarm: "p5JEE8KAQqmxGvHf4t8muQ",
+  robotgripper: "i7NOu1vbQ7iLJu6HTQnpQQ",
+};
+
+const LOCAL_MODEL_DATA: Record<string, ModelDef> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
   v4engine: V4EngineModel,
   robotgripper: RobotGripperModel,
-}
+};
 
 type StudyViewMode = 'single' | 'assembly' | 'edit' | 'simulator'
+
+// API 응답 타입 정의
+interface ApiPart {
+  partUuid: string;
+  partUrl: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    modelUuid: string;
+    description: string;
+    parts: ApiPart[];
+  };
+}
+
+// 부품 상세 API 응답 타입
+interface PartDetailResponse {
+    success: boolean;
+    message: string;
+    data: {
+        partUuid: string;
+        partUrl: string;
+        description: string;
+    }
+}
 
 export default function StudyPage() {
   const { modelId } = useParams<{ modelId: string }>()
   const viewerRef = useRef<ViewerCanvasHandle>(null)
-
-  const currentModel = useMemo(() => {
-    return (modelId && MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel
-  }, [modelId])
   
+  // 현재 모델 상태 (로컬 데이터로 초기화 후 API 데이터로 업데이트)
+  const [currentModel, setCurrentModel] = useState<ModelDef>(() => {
+    return (modelId && LOCAL_MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel;
+  });
+
+  const [isLoadingModel, setIsLoadingModel] = useState(false);
+
+  // 선택된 부품의 API Description 저장용 state
+  const [apiPartDescription, setApiPartDescription] = useState<string | null>(null);
+
+  // ----------------------------------------------------------------------
+  // 1. Model Data Fetching (Get partUuid)
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    if (!modelId) return;
+
+    const fetchModelData = async () => {
+      const normalizedId = modelId.toLowerCase();
+      const uuid = MODEL_UUID_MAP[normalizedId];
+      const localData = LOCAL_MODEL_DATA[normalizedId];
+
+      if (!uuid || !localData) return;
+
+      setIsLoadingModel(true);
+
+      try {
+        const res = await fetch(`/api/3d/models/${uuid}`);
+        if (!res.ok) throw new Error('Failed to fetch model data');
+
+        const json: ApiResponse = await res.json();
+        
+        if (json.success) {
+          // 로컬 데이터 + API 데이터 병합 (UUID 저장)
+          const mergedParts = localData.parts.map((localPart) => {
+            const localFileName = localPart.path.split('/').pop()?.split('.')[0]?.toUpperCase();
+            
+            const matchedApiPart = json.data.parts.find((apiPart) => 
+              apiPart.partUrl.toUpperCase().includes(localFileName || "") ||
+              apiPart.partUrl.toUpperCase().includes(localPart.id.toUpperCase())
+            );
+
+            if (matchedApiPart) {
+              return {
+                ...localPart,
+                path: matchedApiPart.partUrl,
+                // **중요**: 나중에 부품 상세 조회를 위해 partUuid를 저장해둡니다.
+                partUuid: matchedApiPart.partUuid, 
+              };
+            }
+            return localPart;
+          });
+
+          setCurrentModel({
+            ...localData,
+            parts: mergedParts
+          });
+        }
+      } catch (error) {
+        console.error("Model fetch error:", error);
+      } finally {
+        setIsLoadingModel(false);
+      }
+    };
+
+    fetchModelData();
+  }, [modelId]);
+
+
+  // ----------------------------------------------------------------------
+  // View Mode & Selection Logic
+  // ----------------------------------------------------------------------
   const [viewMode, setViewMode] = useState<StudyViewMode>(() => {
     const storageKey = `viewMode_${modelId}`;
     const savedMode = localStorage.getItem(storageKey);
-    
     const validModes: StudyViewMode[] = ['single', 'assembly', 'edit', 'simulator'];
     if (savedMode && validModes.includes(savedMode as StudyViewMode)) {
       return savedMode as StudyViewMode;
     }
-    
     return 'simulator';
   });
 
@@ -129,6 +229,46 @@ export default function StudyPage() {
     }
   }, [viewMode, modelId]);
 
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
+  const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
+  const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
+
+  // ----------------------------------------------------------------------
+  // 2. Part Detail Fetching (Triggered by selection)
+  // ----------------------------------------------------------------------
+  useEffect(() => {
+    // 선택된 부품이 변경되면 API 설명 초기화
+    setApiPartDescription(null);
+
+    if (!currentTargetPart || !currentModel) return;
+
+    // 현재 선택된 부품 찾기
+    const part = currentModel.parts.find((p: any) => p.id === currentTargetPart);
+    
+    // Model Fetch 단계에서 저장해둔 partUuid가 있는지 확인
+    // (ModelDef 타입에 partUuid가 없으므로 any 캐스팅 또는 타입 확장 필요)
+    const partUuid = (part as any)?.partUuid;
+
+    if (partUuid) {
+        // API 호출: 단일 부품 상세 정보
+        fetch(`/api/parts/${partUuid}`)
+            .then(res => res.json())
+            .then((json: PartDetailResponse) => {
+                if (json.success && json.data?.description) {
+                    setApiPartDescription(json.data.description);
+                }
+            })
+            .catch(err => {
+                console.error("Part detail fetch failed:", err);
+            });
+    }
+  }, [currentTargetPart, currentModel]);
+
+  // ----------------------------------------------------------------------
+  // Camera & Other Effects (Existing)
+  // ----------------------------------------------------------------------
+  // const viewerRef = useRef<ViewerCanvasHandle>(null)
+  
   useEffect(() => {
     const storageKey = `camera_${modelId}_${viewMode}`;
     const saveInterval = setInterval(() => {
@@ -157,27 +297,20 @@ export default function StudyPage() {
     }
   }, [modelId, viewMode]);
 
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
-  const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
-
   const [ghost, setGhost] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showGuide, setShowGuide] = useState(true) 
   const [showAssemblyGuide, setShowAssemblyGuide] = useState(true)
   const [showEditGuide, setShowEditGuide] = useState(true)
-
   const [memoText, setMemoText] = useState('')
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
-
-  const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
 
   const selectedPart = useMemo(() => {
     const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
     return currentModel.parts.find((p: any) => p.id === id);
   }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
 
-  // ✅ 중복 제거 필터를 삭제하여 조립 가이드에서 모든 부품이 독립적으로 클릭 가능하도록 함
   const uniqueParts = useMemo(() => {
     return currentModel.parts
       .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "");
@@ -221,6 +354,9 @@ export default function StudyPage() {
     else setSelectedPartId(id);
   }, [viewMode]);
 
+  // ----------------------------------------------------------------------
+  // Render
+  // ----------------------------------------------------------------------
   return (
     <div style={containerStyle}>
       <style>{`
@@ -252,6 +388,15 @@ export default function StudyPage() {
           </div>
 
           <div style={canvasContainerStyle}>
+            {isLoadingModel && (
+              <div style={{ 
+                position: 'absolute', top: 20, right: 20, zIndex: 100, 
+                background: 'rgba(0,0,0,0.6)', padding: '5px 10px', borderRadius: '5px', color: '#fff' 
+              }}>
+                모델 데이터 동기화 중...
+              </div>
+            )}
+
             {viewMode !== 'single' && (
               <div style={zoomControlsStyle}>
                 <button style={zoomBtnStyle} onClick={() => viewerRef.current?.zoomIn()}>＋</button>
@@ -259,20 +404,20 @@ export default function StudyPage() {
                 <button style={zoomResetBtnStyle} onClick={() => viewerRef.current?.resetCamera()}>⟲</button>
               </div>
             )}
-
+            
             {viewMode === 'assembly' && (
-              <div style={guideWrapperStyle}>
-                <button onClick={() => setShowAssemblyGuide(!showAssemblyGuide)} style={guideToggleBtnStyle}>
-                  {showAssemblyGuide ? '▽ 조립도 가이드 닫기' : '△ 조립도 가이드 열기'}
-                </button>
-                {showAssemblyGuide && (
-                  <div style={assemblyNoticeStyle}>
-                    <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '8px' }}>ⓘ INFO</span>
-                    조립도 모드에서는 모델의 전체 구조를 열람만 할 수 있습니다. <br/>
-                    분해 및 조립 시뮬레이션은 <span style={{ color: '#38bdf8' }}>'시뮬레이터'</span> 탭을 이용해 주세요.
-                  </div>
-                )}
-              </div>
+               <div style={guideWrapperStyle}>
+                 <button onClick={() => setShowAssemblyGuide(!showAssemblyGuide)} style={guideToggleBtnStyle}>
+                   {showAssemblyGuide ? '▽ 조립도 가이드 닫기' : '△ 조립도 가이드 열기'}
+                 </button>
+                 {showAssemblyGuide && (
+                   <div style={assemblyNoticeStyle}>
+                     <span style={{ color: '#38bdf8', fontWeight: 700, marginRight: '8px' }}>ⓘ INFO</span>
+                     조립도 모드에서는 모델의 전체 구조를 열람만 할 수 있습니다. <br/>
+                     분해 및 조립 시뮬레이션은 <span style={{ color: '#38bdf8' }}>'시뮬레이터'</span> 탭을 이용해 주세요.
+                   </div>
+                 )}
+               </div>
             )}
 
             {viewMode === 'simulator' && (
@@ -322,6 +467,7 @@ export default function StudyPage() {
                 )}
               </div>
             )}
+
 
             {(viewMode === 'single' || viewMode === 'assembly') ? (
               <div style={singleModeContainerStyle}>
@@ -412,11 +558,17 @@ export default function StudyPage() {
                             <>
                               <section>
                                 <h4 style={infoTitleStyle}>재질</h4>
-                                <div style={materialBoxStyle}>{selectedPart.material}</div>
+                                <div style={materialBoxStyle}>
+                                  {/* 재질 정보는 로컬 데이터를 유지 */}
+                                  {selectedPart.material}
+                                </div>
                               </section>
                               <section>
                                 <h4 style={infoTitleStyle}>상세 설명</h4>
-                                <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{selectedPart.desc}</p>
+                                {/* API 값이 있으면 우선 표시, 없으면 로컬 값 사용 */}
+                                <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>
+                                    {apiPartDescription || selectedPart.desc}
+                                </p>
                               </section>
                             </>
                           ) : (
