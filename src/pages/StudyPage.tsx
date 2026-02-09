@@ -134,6 +134,40 @@ export default function StudyPage() {
     }
   }, [viewMode, modelId]);
 
+  // 카메라 상태 자동 저장 (1초 간격)
+  useEffect(() => {
+    // 뷰 모드가 변경되거나 모델이 바뀌면 키가 달라짐
+    const storageKey = `camera_${modelId}_${viewMode}`;
+
+    const saveInterval = setInterval(() => {
+      if (viewerRef.current) {
+        const currentState = viewerRef.current.getCameraState();
+        if (currentState) {
+          localStorage.setItem(storageKey, JSON.stringify(currentState));
+        }
+      }
+    }, 1000); // 1초마다 현재 위치 저장
+
+    return () => clearInterval(saveInterval);
+  }, [modelId, viewMode]);
+
+  // 카메라 상태 복원 (탭 변경 or 새로고침 직후)
+  useEffect(() => {
+    const storageKey = `camera_${modelId}_${viewMode}`;
+    const savedJson = localStorage.getItem(storageKey);
+
+    if (savedJson) {
+      try {
+        const savedState = JSON.parse(savedJson);
+        setTimeout(() => {
+          viewerRef.current?.setCameraState(savedState);
+        }, 100); 
+      } catch (err) {
+        console.error("카메라 상태 복원 실패:", err);
+      }
+    }
+  }, [modelId, viewMode]);
+
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
 

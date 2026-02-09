@@ -22,6 +22,10 @@ export type ViewerCanvasHandle = {
     position: [number, number, number]
     target: [number, number, number]
   } | undefined
+  setCameraState: (state: {
+    position: [number, number, number]
+    target: [number, number, number]
+  }) => void
 }
 
 const ViewerCanvas = forwardRef<
@@ -120,6 +124,21 @@ const ViewerCanvas = forwardRef<
         target: [controls.target.x, controls.target.y, controls.target.z],
       }
     },
+    // 저장된 상태로 카메라 강제 이동
+    setCameraState(state) {
+      if (!refs.current) return
+      const { camera, controls } = refs.current
+      
+      // 카메라 위치 복원
+      camera.position.set(...state.position)
+      
+      // 바라보는 지점(Target) 복원
+      controls.target.set(...state.target)
+      
+      // 변경 사항 적용
+      camera.updateProjectionMatrix()
+      controls.update()
+    }
   }))
 
   const framePart = (root: THREE.Object3D) => {
