@@ -320,15 +320,15 @@ export default function StudyPage() {
                   <div style={guideContentStyle}>
                     <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>🖱️</span> 마우스 조작</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><span style={guideIconStyle}>🖱️</span><span>좌클릭 : <span style={highlightTextStyle}>모델 회전</span></span></div>
-                      <div style={guideRowStyle}><span style={guideIconStyle}>🖐️</span><span>우클릭 : <span style={highlightTextStyle}>시점 이동</span></span></div>
-                      <div style={guideRowStyle}><span style={guideIconStyle}>🔄</span><span>휠 : <span style={highlightTextStyle}>확대/축소</span></span></div>
+                      <div style={guideRowStyle}><span style={guideIconStyle}>🖱️</span><span>좌클릭 &nbsp; : &nbsp; <span style={highlightTextStyle}>모델 회전</span></span></div>
+                      <div style={guideRowStyle}><span style={guideIconStyle}>🖐️</span><span>우클릭 &nbsp; : &nbsp; <span style={highlightTextStyle}>시점 이동</span></span></div>
+                      <div style={guideRowStyle}><span style={guideIconStyle}>🔄</span><span>휠 &nbsp; : &nbsp; <span style={highlightTextStyle}>확대/축소</span></span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>⌨️</span> 단축키</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><kbd style={kbdStyle}>Shift</kbd><span> + 드래그 : <span style={highlightTextStyle}>분해 / 조립</span></span></div>
-                      <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>전체화면</span></div>
+                      <div style={guideRowStyle}><kbd style={kbdStyle}>Shift</kbd><span> + 드래그 &nbsp; : &nbsp; <span style={highlightTextStyle}>분해 / 조립</span></span></div>
+                      <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>: &nbsp; 전체화면</span></div>
                     </div>
                   </div>
                 )}
@@ -344,13 +344,13 @@ export default function StudyPage() {
                   <div style={guideContentStyle}>
                     <div style={guideSectionTitleStyle}>🧩 단계별 조립 모드</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><span>🖱️ 부품 클릭 : <span style={highlightTextStyle}>제자리로 조립</span></span></div>
-                      <div style={guideRowStyle}><span>🔄 초기화 버튼 : <span style={highlightTextStyle}>전체 분해</span></span></div>
+                      <div style={guideRowStyle}><span>🖱️ 부품 클릭 &nbsp; : &nbsp; <span style={highlightTextStyle}>제자리로 조립</span></span></div>
+                      <div style={guideRowStyle}><span>🔄 초기화 버튼 &nbsp; : &nbsp; <span style={highlightTextStyle}>전체 분해</span></span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={guideSectionTitleStyle}><span style={{ marginRight: '6px' }}>⌨️</span> 단축키</div>
                     <div style={guideItemStyle}>
-                      <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>전체화면</span></div>
+                      <div style={guideRowStyle}><kbd style={kbdStyle}>F</kbd><span>&nbsp; : &nbsp; 전체화면</span></div>
                     </div>
                     <div style={dividerStyle} />
                     <div style={{ fontSize: '11px', color: '#94a3b8' }}>부품을 클릭하여 조립도를 완성해 보세요.</div>
