@@ -64,7 +64,7 @@ export default function DashboardPage() {
               title={model.name}
               desc="모델 학습 및 구조 분석"
               imageSrc={model.imageUrl}
-              onClick={() => navigate(`/study/${model.modelUuid}`)}
+              onClick={() => navigate(`/study/${model.name.toLowerCase().replace(" ", "")}`)}
             />
           ))}
         </div>

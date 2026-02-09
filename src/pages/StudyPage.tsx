@@ -223,11 +223,15 @@ export default function StudyPage() {
   });
 
   useEffect(() => {
-    if (modelId) {
-      const storageKey = `viewMode_${modelId}`;
-      localStorage.setItem(storageKey, viewMode);
-    }
-  }, [viewMode, modelId]);
+    if (!modelId) return;
+
+    // 대시보드에서 들어올 때 항상 simulator 탭으로 시작
+    setViewMode('simulator');
+
+    // 이전에 저장된 탭 기록 제거 (모델별)
+    localStorage.removeItem(`viewMode_${modelId}`);
+  }, [modelId]);
+
 
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
@@ -306,6 +310,14 @@ export default function StudyPage() {
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
 
+  // ===== Memo API state =====
+  const [memoUuid, setMemoUuid] = useState<string | null>(null)
+  const [memoLoading, setMemoLoading] = useState(false)
+  const modelUuid = modelId
+    ? MODEL_UUID_MAP[modelId.toLowerCase()]
+    : null;
+
+
   const selectedPart = useMemo(() => {
     const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
     return currentModel.parts.find((p: any) => p.id === id);
@@ -349,6 +361,64 @@ export default function StudyPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    if (!modelUuid) return;
+
+    const fetchMemo = async () => {
+      setMemoLoading(true);
+      try {
+        const res = await fetch(`/api/models/${modelUuid}/memo`);
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          setMemoUuid(json.data.memoUuid);
+          setMemoText(json.data.memoContent.body);
+        } else {
+          setMemoUuid(null);
+          setMemoText('');
+        }
+      } catch (err) {
+        console.error('메모 조회 실패', err);
+      } finally {
+        setMemoLoading(false);
+      }
+    };
+
+    fetchMemo();
+  }, [modelUuid]);
+
+
+
+  const handleSaveMemo = async () => {
+    if (!modelUuid) return;
+
+    try {
+      const res = await fetch(`/api/models/${modelUuid}/memo`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: {
+            title: `${modelId} Memo`,
+            body: memoText,
+          },
+        }),
+      });
+
+      const json = await res.json();
+
+      if (json.success) {
+        setMemoUuid(json.data.memoUuid);
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('메모 저장 실패', err);
+    }
+  };
+
+
+
+
+
   const handleSelect = useCallback((id: string | null) => {
     if (viewMode === 'single') setActiveSinglePartId(id);
     else setSelectedPartId(id);
@@ -369,6 +439,12 @@ export default function StudyPage() {
         #info-panel-content::-webkit-scrollbar-track { background: transparent; }
         #info-panel-content::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.2); border-radius: 10px; }
         #info-panel-content::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.4); }
+
+        #memo-textarea::-webkit-scrollbar { width: 6px; }
+        #memo-textarea::-webkit-scrollbar-track { background: transparent; }
+        #memo-textarea::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.25); border-radius: 10px; }
+        #memo-textarea::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.5); }
+
       `}</style>
 
       <Header />
@@ -634,6 +710,7 @@ export default function StudyPage() {
               {isMemoOpen && (
                 <div style={memoInnerWrapperStyle}>
                   <textarea 
+                    id="memo-textarea"
                     style={memoBoxStyle(isEditing)} 
                     placeholder="학습 내용을 기록하세요." 
                     value={memoText}
@@ -641,7 +718,13 @@ export default function StudyPage() {
                     readOnly={!isEditing}
                   />
                   <div style={{ display: 'flex', justifyContent: 'center', marginTop: '12px' }}>
-                    <button onClick={() => setIsEditing(!isEditing)} style={memoSaveBtnStyle(isEditing)}>
+                    <button
+                      onClick={() => {
+                        if (isEditing) handleSaveMemo();
+                        else setIsEditing(true);
+                      }}
+                      style={memoSaveBtnStyle(isEditing)}
+                    >
                       {isEditing ? '저장하기' : '수정하기'}
                     </button>
                   </div>
