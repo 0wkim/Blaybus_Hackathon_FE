@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../providers/AuthProvider';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { logout } = useAuth(); 
   const [isHovered, setIsHovered] = useState(false);
 
   const isActive = (path: string) => location.pathname.startsWith(path);
 
-  const handleLogout = () => {
-    // 로그아웃 로직 추가 필요
-    console.log("Logout clicked");
-    navigate('/login');
+  const handleLogout = async () => {
+    // 로그아웃 로직 실행
+    await logout(); 
+    
+    // 로그아웃이 완료되면 AuthProvider의 isAuthenticated가 false로 변경 됨 
+    // ProtectedRoute가 이를 감지하여 접근 제어
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -72,6 +77,7 @@ const Header = () => {
   );
 };
 
+// 스타일
 const headerStyle: React.CSSProperties = {
   height: '60px',
   position: 'fixed',

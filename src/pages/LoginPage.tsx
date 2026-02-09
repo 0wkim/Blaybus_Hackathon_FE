@@ -7,14 +7,13 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   // 입력값 상태 관리
-  const [email, setEmail] = useState("");
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setEmail(value);
+  // 상태 변수 이름 변경 (email -> userId)
+  const [userId, setUserId] = useState("");
 
-      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      setIsValid(emailRegex.test(value));
-    };
+  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 단순히 입력된 값만 상태에 저장
+    setUserId(e.target.value); 
+  };
 
   const [password, setPassword] = useState("");
   const [isValid, setIsValid] = useState(true);
@@ -26,13 +25,13 @@ const LoginPage = () => {
 
   const handleLogin = async () => {
     // 유효성 검사
-    if (!email || !password) {
+    if (!userId || !password) {
       alert("아이디와 비밀번호를 모두 입력해주세요.");
       return;
     }
 
     // AuthProvider의 login 함수 호출 (성공 여부 반환)
-    const success = await login(email, password);
+    const success = await login(userId, password);
     
     // 성공 시 대시보드 이동
     if (success) {
@@ -64,25 +63,20 @@ const LoginPage = () => {
 
         {/* 입력 필드: 아이디 */}
         <div style={styles.inputGroup}>
-          <label style={styles.label}>아이디 (이메일)</label>
+          <label style={styles.label}>아이디</label>
           <input 
-            type="email" 
-            placeholder="example@email.com" 
+            type="text" 
+            placeholder="아이디를 입력하세요" 
             style={{
               ...styles.input,
               borderWidth: '1px',
               borderStyle: 'solid',
-              borderColor: isValid ? 'rgba(255, 255, 255, 0.1)' : '#ef4444',
+              borderColor: 'rgba(255, 255, 255, 0.1)', 
               transition: 'border-color 0.2s ease',
             }} 
-            value={email}
-            onChange={handleEmailChange}
+            value={userId} 
+            onChange={handleIdChange}
           />
-          {email !== '' && !isValid && (
-            <span style={{ color: '#ef4444', fontSize: '11px', marginTop: '4px', display: 'block' }}>
-              올바른 이메일 형식이 아닙니다.
-            </span>
-          )}
         </div>
 
         {/* 입력 필드: 비밀번호 */}
