@@ -243,10 +243,26 @@ const ViewerCanvas = forwardRef<
         const root = gltf.scene
         const wrapper = new THREE.Group()
         if (p.rotation) root.rotation.set(p.rotation.x, p.rotation.y, p.rotation.z)
+
+        // ✅ [추가 1] 모델에 설정된 scale이 있으면 가져오고, 없으면 1(기본값) 사용
+        // (TypeScript 에러가 나면 (model as any).scale 로 하세요)
+        const globalScale = (model as any).scale || 1;
+
+        // ✅ [추가 2] 부품 자체의 크기를 키움
+        root.scale.setScalar(globalScale);
+
         wrapper.add(root)
-        
+
+        // ✅ [수정] 초기 위치 설정 시 좌표에도 배율 곱하기
         const startPos = mode === 'edit' ? p.exploded : p.assembled
-        wrapper.position.set(startPos.x, startPos.y, startPos.z)
+        wrapper.position.set(
+            startPos.x * globalScale, 
+            startPos.y * globalScale, 
+            startPos.z * globalScale
+        )
+        
+        // const startPos = mode === 'edit' ? p.exploded : p.assembled
+        // wrapper.position.set(startPos.x, startPos.y, startPos.z)
 
         root.traverse((obj: any) => {
           if (!obj.isMesh) return
@@ -264,8 +280,17 @@ const ViewerCanvas = forwardRef<
           })
         })
 
-        const assembled = new THREE.Vector3(p.assembled.x, p.assembled.y, p.assembled.z)
-        const exploded = new THREE.Vector3(p.exploded.x, p.exploded.y, p.exploded.z)
+        // ✅ [수정] 조립/분해 위치(Vector3) 저장 시에도 배율 곱하기
+        const assembled = new THREE.Vector3(
+            p.assembled.x * globalScale, 
+            p.assembled.y * globalScale, 
+            p.assembled.z * globalScale
+        )
+        const exploded = new THREE.Vector3(
+            p.exploded.x * globalScale, 
+            p.exploded.y * globalScale, 
+            p.exploded.z * globalScale
+        )
 
         partsRef.current[p.id] = { root: wrapper, assembled, exploded, isAdded: false }
         simFromRef.current[p.id] = mode === 'edit' ? exploded.clone() : assembled.clone()

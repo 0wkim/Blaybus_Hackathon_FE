@@ -1,4 +1,5 @@
 export const RobotGripperModel = {
+  scale: 2.5,
 
   description: {
       title: "Robot Gripper",
