@@ -10,6 +10,7 @@ import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
 import { RobotGripperModel } from '../components/viewer/objects/RobotGripper/model'
 import Header from '../components/Header'
 
+
 // ----------------------------------------------------------------------
 // AI Assistant Component
 // ----------------------------------------------------------------------
@@ -94,13 +95,8 @@ const AIAssistantPanel = ({
 // Constants & Types
 // ----------------------------------------------------------------------
 
-const MODEL_UUID_MAP: Record<string, string> = {
-  suspension: "AKDJioICRyeqJLvHlyRcLA",
-  v4engine: "oitBLJDNRZ2GpKh8kYcUgg",
-  robotarm: "p5JEE8KAQqmxGvHf4t8muQ",
-  robotgripper: "i7NOu1vbQ7iLJu6HTQnpQQ",
-};
-
+// 로컬 데이터 매핑 (API가 좌표 정보가 없으므로, UUID와 매칭할 로컬 데이터 힌트가 필요할 수 있음)
+// 다만, URL이 UUID로 오기 때문에 초기 로딩시에는 'RobotArmModel'을 기본으로 보여주다가 API 응답 후 교체하는 방식을 씁니다.
 const LOCAL_MODEL_DATA: Record<string, ModelDef> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
@@ -108,25 +104,26 @@ const LOCAL_MODEL_DATA: Record<string, ModelDef> = {
   robotgripper: RobotGripperModel,
 };
 
+// ... (Types interface 그대로 유지) ...
 type StudyViewMode = 'single' | 'assembly' | 'edit' | 'simulator'
 
-// API 응답 타입 정의
-interface ApiPart {
-  partUuid: string;
-  partUrl: string;
-}
+interface ApiUsage { title: string; content: string; }
+interface ApiTheory { title: string; content: string; details: string; }
+interface ApiPart { partUuid: string; partUrl: string; }
 
 interface ApiResponse {
   success: boolean;
   message: string;
   data: {
     modelUuid: string;
-    description: string;
+    title: string;
+    summary: string;
+    usage: ApiUsage[];
+    theory: ApiTheory[];
     parts: ApiPart[];
   };
 }
 
-// 부품 상세 API 응답 타입
 interface PartDetailResponse {
     success: boolean;
     message: string;
@@ -138,46 +135,52 @@ interface PartDetailResponse {
 }
 
 export default function StudyPage() {
-  const { modelId } = useParams<{ modelId: string }>()
+  const { modelId } = useParams<{ modelId: string }>() // 이제 이게 UUID 입니다.
   const viewerRef = useRef<ViewerCanvasHandle>(null)
   
-  // 현재 모델 상태 (로컬 데이터로 초기화 후 API 데이터로 업데이트)
-  const [currentModel, setCurrentModel] = useState<ModelDef>(() => {
-    return (modelId && LOCAL_MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel;
-  });
-
+  const [currentModel, setCurrentModel] = useState<ModelDef>(RobotArmModel); // 초기값은 안전하게 로컬 데이터 중 하나
   const [isLoadingModel, setIsLoadingModel] = useState(false);
-
-  // 선택된 부품의 API Description 저장용 state
   const [apiPartDescription, setApiPartDescription] = useState<string | null>(null);
 
   // ----------------------------------------------------------------------
-  // 1. Model Data Fetching (Get partUuid)
+  // 1. Model Data Fetching (UUID 사용)
   // ----------------------------------------------------------------------
   useEffect(() => {
+    // modelId가 없으면 중단
     if (!modelId) return;
 
     const fetchModelData = async () => {
-      const normalizedId = modelId.toLowerCase();
-      const uuid = MODEL_UUID_MAP[normalizedId];
-      const localData = LOCAL_MODEL_DATA[normalizedId];
-
-      if (!uuid || !localData) return;
-
       setIsLoadingModel(true);
 
       try {
-        const res = await fetch(`/api/3d/models/${uuid}`);
-        if (!res.ok) throw new Error('Failed to fetch model data');
+        // ✅ [수정] 매핑 과정 없이 URL 파라미터(UUID)를 바로 사용
+        console.log("Fetching API with UUID:", modelId);
+        
+        const res = await fetch(`/api/models/${modelId}`, {
+            credentials: 'include',
+        });
+        
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Failed to fetch model data: ${res.status} ${errText}`);
+        }
 
         const json: ApiResponse = await res.json();
         
         if (json.success) {
-          // 로컬 데이터 + API 데이터 병합 (UUID 저장)
-          const mergedParts = localData.parts.map((localPart) => {
+          const apiData = json.data;
+          
+          // [로컬 데이터 매칭 로직]
+          // API에서 받은 타이틀("V4 Engine") 등을 이용해 적절한 로컬 데이터(좌표값 보유)를 찾습니다.
+          // 못 찾으면 기본값(RobotArmModel)을 베이스로 씁니다.
+          const normalizedTitle = apiData.title.toLowerCase().replace(/[\s-_]/g, '');
+          const baseLocalModel = LOCAL_MODEL_DATA[normalizedTitle] || RobotArmModel;
+
+          // 로컬 데이터 + API 데이터 병합
+          const mergedParts = baseLocalModel.parts.map((localPart) => {
             const localFileName = localPart.path.split('/').pop()?.split('.')[0]?.toUpperCase();
             
-            const matchedApiPart = json.data.parts.find((apiPart) => 
+            const matchedApiPart = apiData.parts.find((apiPart) => 
               apiPart.partUrl.toUpperCase().includes(localFileName || "") ||
               apiPart.partUrl.toUpperCase().includes(localPart.id.toUpperCase())
             );
@@ -185,16 +188,21 @@ export default function StudyPage() {
             if (matchedApiPart) {
               return {
                 ...localPart,
-                path: matchedApiPart.partUrl,
-                // **중요**: 나중에 부품 상세 조회를 위해 partUuid를 저장해둡니다.
-                partUuid: matchedApiPart.partUuid, 
+                path: matchedApiPart.partUrl, // API URL로 교체
+                partUuid: matchedApiPart.partUuid, // 상세 조회용 UUID
               };
             }
             return localPart;
           });
 
           setCurrentModel({
-            ...localData,
+            ...baseLocalModel,
+            description: {
+                title: apiData.title,
+                summary: apiData.summary,
+                usage: apiData.usage?.length > 0 ? apiData.usage : baseLocalModel.description.usage,
+                theory: apiData.theory?.length > 0 ? apiData.theory : baseLocalModel.description.theory,
+            },
             parts: mergedParts
           });
         }
@@ -208,71 +216,21 @@ export default function StudyPage() {
     fetchModelData();
   }, [modelId]);
 
-
   // ----------------------------------------------------------------------
   // View Mode & Selection Logic
   // ----------------------------------------------------------------------
-  const [viewMode, setViewMode] = useState<StudyViewMode>(() => {
-    const storageKey = `viewMode_${modelId}`;
-    const savedMode = localStorage.getItem(storageKey);
-    const validModes: StudyViewMode[] = ['single', 'assembly', 'edit', 'simulator'];
-    if (savedMode && validModes.includes(savedMode as StudyViewMode)) {
-      return savedMode as StudyViewMode;
-    }
-    return 'simulator';
-  });
+  const [viewMode, setViewMode] = useState<StudyViewMode>('simulator');
 
+  // [수정] 모델이 바뀌면(UUID 변경) 뷰 모드 및 카메라 리셋
   useEffect(() => {
     if (!modelId) return;
-
-    // 대시보드에서 들어올 때 항상 simulator 탭으로 시작
     setViewMode('simulator');
-
-    // 이전에 저장된 탭 기록 제거 (모델별)
-    localStorage.removeItem(`viewMode_${modelId}`);
+    // 이전 모델의 상태가 남지 않도록 초기화
+    setSelectedPartId(null);
+    setActiveSinglePartId(null);
   }, [modelId]);
 
-
-  const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
-  const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
-  const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
-
-  // ----------------------------------------------------------------------
-  // 2. Part Detail Fetching (Triggered by selection)
-  // ----------------------------------------------------------------------
-  useEffect(() => {
-    // 선택된 부품이 변경되면 API 설명 초기화
-    setApiPartDescription(null);
-
-    if (!currentTargetPart || !currentModel) return;
-
-    // 현재 선택된 부품 찾기
-    const part = currentModel.parts.find((p: any) => p.id === currentTargetPart);
-    
-    // Model Fetch 단계에서 저장해둔 partUuid가 있는지 확인
-    // (ModelDef 타입에 partUuid가 없으므로 any 캐스팅 또는 타입 확장 필요)
-    const partUuid = (part as any)?.partUuid;
-
-    if (partUuid) {
-        // API 호출: 단일 부품 상세 정보
-        fetch(`/api/parts/${partUuid}`)
-            .then(res => res.json())
-            .then((json: PartDetailResponse) => {
-                if (json.success && json.data?.description) {
-                    setApiPartDescription(json.data.description);
-                }
-            })
-            .catch(err => {
-                console.error("Part detail fetch failed:", err);
-            });
-    }
-  }, [currentTargetPart, currentModel]);
-
-  // ----------------------------------------------------------------------
-  // Camera & Other Effects (Existing)
-  // ----------------------------------------------------------------------
-  // const viewerRef = useRef<ViewerCanvasHandle>(null)
-  
+  // ... (Camera 저장/복원 로직 유지) ...
   useEffect(() => {
     const storageKey = `camera_${modelId}_${viewMode}`;
     const saveInterval = setInterval(() => {
@@ -301,6 +259,13 @@ export default function StudyPage() {
     }
   }, [modelId, viewMode]);
 
+  // ... (나머지 UI State, Event Handler, Memo 로직 등은 기존 코드 그대로 사용) ...
+  // 중복되는 코드는 생략하고 핵심 변경사항 위주로 적용해 주세요.
+  
+  // (아래 변수 선언들은 기존과 동일)
+  const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
+  const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
+  const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
   const [ghost, setGhost] = useState(true)
   const [isExpanded, setIsExpanded] = useState(false)
   const [showGuide, setShowGuide] = useState(true) 
@@ -309,67 +274,18 @@ export default function StudyPage() {
   const [memoText, setMemoText] = useState('')
   const [isEditing, setIsEditing] = useState(true)
   const [isMemoOpen, setIsMemoOpen] = useState(true)
-
-  // ===== Memo API state =====
   const [memoUuid, setMemoUuid] = useState<string | null>(null)
   const [memoLoading, setMemoLoading] = useState(false)
-  const modelUuid = modelId
-    ? MODEL_UUID_MAP[modelId.toLowerCase()]
-    : null;
 
-
-  const selectedPart = useMemo(() => {
-    const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
-    return currentModel.parts.find((p: any) => p.id === id);
-  }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
-
-  const uniqueParts = useMemo(() => {
-    return currentModel.parts
-      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "");
-  }, [currentModel]);
-
+  // Memo Fetching 도 modelId(UUID)를 바로 사용
   useEffect(() => {
-    if (viewMode === 'single' || viewMode === 'edit') {
-      setGhost(false);
-    } else {
-      setGhost(true);
-    }
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (viewMode === 'edit') return; 
-    setSelectedPartId(null);
-    setActiveSinglePartId(null);
-  }, [viewMode, modelId]);
-
-  useEffect(() => {
-    document.body.style.margin = '0'
-    document.body.style.backgroundColor = '#080c14' 
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof Element && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
-      if (e.key.toLowerCase() === 'f' && !e.repeat) {
-        setIsExpanded(prev => !prev);
-      }
-      if (e.key === 'Escape') {
-        setIsExpanded(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
-    if (!modelUuid) return;
+    if (!modelId) return; // modelId가 곧 UUID
 
     const fetchMemo = async () => {
       setMemoLoading(true);
       try {
-        const res = await fetch(`/api/models/${modelUuid}/memo`);
+        const res = await fetch(`/api/models/${modelId}/memo`, { credentials: 'include' });
         const json = await res.json();
-
         if (json.success && json.data) {
           setMemoUuid(json.data.memoUuid);
           setMemoText(json.data.memoContent.body);
@@ -383,29 +299,21 @@ export default function StudyPage() {
         setMemoLoading(false);
       }
     };
-
     fetchMemo();
-  }, [modelUuid]);
-
-
+  }, [modelId]);
 
   const handleSaveMemo = async () => {
-    if (!modelUuid) return;
-
+    if (!modelId) return;
     try {
-      const res = await fetch(`/api/models/${modelUuid}/memo`, {
+      const res = await fetch(`/api/models/${modelId}/memo`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: {
-            title: `${modelId} Memo`,
-            body: memoText,
-          },
+          content: { title: `Memo`, body: memoText },
         }),
+        credentials: 'include'
       });
-
       const json = await res.json();
-
       if (json.success) {
         setMemoUuid(json.data.memoUuid);
         setIsEditing(false);
@@ -415,15 +323,68 @@ export default function StudyPage() {
     }
   };
 
+  // Part Detail Fetching
+  useEffect(() => {
+    setApiPartDescription(null);
+    if (!currentTargetPart || !currentModel) return;
 
+    const part = currentModel.parts.find((p: any) => p.id === currentTargetPart);
+    const partUuid = (part as any)?.partUuid;
 
+    if (partUuid) {
+        fetch(`/api/parts/${partUuid}`)
+            .then(res => res.json())
+            .then((json: PartDetailResponse) => {
+                if (json.success && json.data?.description) {
+                    setApiPartDescription(json.data.description);
+                }
+            })
+            .catch(err => console.error("Part detail fetch failed:", err));
+    }
+  }, [currentTargetPart, currentModel]);
 
+  // useMemo hooks
+  const selectedPart = useMemo(() => {
+    const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
+    return currentModel.parts.find((p: any) => p.id === id);
+  }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
+
+  const uniqueParts = useMemo(() => {
+    return currentModel.parts.filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "");
+  }, [currentModel]);
+
+  // Effects for ViewMode
+  useEffect(() => {
+    if (viewMode === 'single' || viewMode === 'edit') setGhost(false);
+    else setGhost(true);
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'edit') return; 
+    setSelectedPartId(null);
+    setActiveSinglePartId(null);
+  }, [viewMode, modelId]);
+
+  // Global Key & Style Effects
+  useEffect(() => {
+    document.body.style.margin = '0'
+    document.body.style.backgroundColor = '#080c14' 
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof Element && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
+      if (e.key.toLowerCase() === 'f' && !e.repeat) setIsExpanded(prev => !prev);
+      if (e.key === 'Escape') setIsExpanded(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSelect = useCallback((id: string | null) => {
     if (viewMode === 'single') setActiveSinglePartId(id);
     else setSelectedPartId(id);
   }, [viewMode]);
-
   // ----------------------------------------------------------------------
   // Render
   // ----------------------------------------------------------------------
