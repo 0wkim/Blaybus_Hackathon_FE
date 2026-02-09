@@ -110,23 +110,18 @@ export default function StudyPage() {
     return (modelId && MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel
   }, [modelId])
   
-  // useState 초기값 설정 로직 변경
   const [viewMode, setViewMode] = useState<StudyViewMode>(() => {
-    // 현재 모델 ID에 맞는 키 생성 (예: viewMode_robotarm)
     const storageKey = `viewMode_${modelId}`;
     const savedMode = localStorage.getItem(storageKey);
     
-    // 저장된 값이 유효한 모드인지 확인 (이상한 값이 들어있을 경우 대비)
     const validModes: StudyViewMode[] = ['single', 'assembly', 'edit', 'simulator'];
     if (savedMode && validModes.includes(savedMode as StudyViewMode)) {
       return savedMode as StudyViewMode;
     }
     
-    // 저장된 값이 없으면 기본값 'simulator' 사용
     return 'simulator';
   });
 
-  // viewMode가 변경될 때마다 localStorage에 저장하는 useEffect 추가
   useEffect(() => {
     if (modelId) {
       const storageKey = `viewMode_${modelId}`;
@@ -134,11 +129,8 @@ export default function StudyPage() {
     }
   }, [viewMode, modelId]);
 
-  // 카메라 상태 자동 저장 (1초 간격)
   useEffect(() => {
-    // 뷰 모드가 변경되거나 모델이 바뀌면 키가 달라짐
     const storageKey = `camera_${modelId}_${viewMode}`;
-
     const saveInterval = setInterval(() => {
       if (viewerRef.current) {
         const currentState = viewerRef.current.getCameraState();
@@ -146,16 +138,13 @@ export default function StudyPage() {
           localStorage.setItem(storageKey, JSON.stringify(currentState));
         }
       }
-    }, 1000); // 1초마다 현재 위치 저장
-
+    }, 1000);
     return () => clearInterval(saveInterval);
   }, [modelId, viewMode]);
 
-  // 카메라 상태 복원 (탭 변경 or 새로고침 직후)
   useEffect(() => {
     const storageKey = `camera_${modelId}_${viewMode}`;
     const savedJson = localStorage.getItem(storageKey);
-
     if (savedJson) {
       try {
         const savedState = JSON.parse(savedJson);
@@ -183,23 +172,17 @@ export default function StudyPage() {
 
   const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
 
-  // 현재 선택된 부품 데이터 탐색 
   const selectedPart = useMemo(() => {
     const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
     return currentModel.parts.find((p: any) => p.id === id);
   }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
 
-  // 중복 제거된 부품 목록 생성 
-  // 이름(name)이 같은 부품은 하나만 남기고, 썸네일이 있는 것만 필터링
+  // ✅ 중복 제거 필터를 삭제하여 조립 가이드에서 모든 부품이 독립적으로 클릭 가능하도록 함
   const uniqueParts = useMemo(() => {
     return currentModel.parts
-      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "") // 썸네일 있는 것만
-      .filter((part: any, index: number, self: any[]) => 
-        index === self.findIndex((t: any) => t.name === part.name)
-      );
+      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "");
   }, [currentModel]);
 
-  // Ghost Mode 설정
   useEffect(() => {
     if (viewMode === 'single' || viewMode === 'edit') {
       setGhost(false);
@@ -208,7 +191,6 @@ export default function StudyPage() {
     }
   }, [viewMode]);
 
-  // 뷰 모드가 변경되면 선택된 부품 초기화
   useEffect(() => {
     if (viewMode === 'edit') return; 
     setSelectedPartId(null);
@@ -234,28 +216,10 @@ export default function StudyPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const storageKey = `camera_state_${modelId}`;
-  
-  useEffect(() => {
-    if (viewMode === 'single') return;
-    const saveInterval = setInterval(() => {
-      if (viewerRef.current?.getCameraState) {
-        const currentState = viewerRef.current.getCameraState();
-        if (currentState) {
-          localStorage.setItem(storageKey, JSON.stringify(currentState));
-        }
-      }
-    }, 1000);
-    return () => clearInterval(saveInterval);
-  }, [viewMode, storageKey]);
-
-  const handleSinglePartSelect = useCallback((id: string | null) => {
-    setActiveSinglePartId(id);
-  }, []);
-
-  const handleMultiPartSelect = useCallback((id: string | null) => {
-    setSelectedPartId(id);
-  }, []);
+  const handleSelect = useCallback((id: string | null) => {
+    if (viewMode === 'single') setActiveSinglePartId(id);
+    else setSelectedPartId(id);
+  }, [viewMode]);
 
   return (
     <div style={containerStyle}>
@@ -363,21 +327,15 @@ export default function StudyPage() {
               <div style={singleModeContainerStyle}>
                 {viewMode === 'single' && (
                   <div id="part-list-sidebar" style={singleSidebarStyle}>
-                    {uniqueParts.map((p: any) => {
-                      const isSelected = activeSinglePartId 
-                        ? currentModel.parts.find((cp:any) => cp.id === activeSinglePartId)?.name === p.name 
-                        : false;
-
-                      return (
-                        <div 
-                          key={p.id} 
-                          style={singleSidebarItemStyle(isSelected)} 
-                          onClick={() => setActiveSinglePartId(p.id)} // 클릭 시 해당 대표 부품의 ID로 설정
-                        >
-                          <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.name} />
-                        </div>
-                      );
-                    })}
+                    {uniqueParts.map((p: any) => (
+                      <div 
+                        key={p.id} 
+                        style={singleSidebarItemStyle(activeSinglePartId === p.id)} 
+                        onClick={() => setActiveSinglePartId(p.id)}
+                      >
+                        <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.name} />
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -386,8 +344,8 @@ export default function StudyPage() {
                       ref={viewerRef} 
                       model={currentModel} 
                       ghost={ghost} 
-                      selectedPartId={viewMode === 'single' ? activeSinglePartId : selectedPartId} 
-                      onSelectPart={viewMode === 'single' ? handleSinglePartSelect : handleMultiPartSelect} 
+                      selectedPartId={currentTargetPart} 
+                      onSelectPart={handleSelect} 
                       isExpanded={isExpanded} 
                       mode={viewMode} 
                     />
@@ -400,7 +358,6 @@ export default function StudyPage() {
 
                 <div style={singleInfoPanelStyle}>
                   <div style={{ ...infoBoxStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                    {/* 상단 타이틀 구역 - 고정 */}
                     <h3 style={partNameTitleStyle}>
                       {viewMode === 'assembly' && !selectedPartId 
                         ? currentModel.description.title 
@@ -408,7 +365,6 @@ export default function StudyPage() {
                     </h3>
                     <div style={{ height: '1px', background: 'rgba(56, 189, 248, 0.2)', margin: '12px 0', flexShrink: 0 }} />
 
-                    {/* 스크롤 가능한 콘텐츠 구역 */}
                     <div id="info-panel-content" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
                       {(viewMode === 'assembly' && !selectedPartId) ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -423,12 +379,7 @@ export default function StudyPage() {
                               {currentModel.description.usage.map((item: any) => (
                                 <div key={item.title} style={badgeListItemStyle}>
                                   <span style={badgeStyle}>{item.title}</span>
-                                  <span style={{ 
-                                    fontSize: '11px', 
-                                    color: '#e2e8f0', 
-                                    whiteSpace: 'pre-wrap', 
-                                    lineHeight: '1.4' 
-                                  }}>
+                                  <span style={{ fontSize: '11px', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
                                     {item.content}
                                   </span>
                                 </div>
@@ -442,23 +393,11 @@ export default function StudyPage() {
                               {currentModel.description.theory.map((t: any) => (
                                 <div key={t.title} style={badgeListItemStyle}>
                                   <span style={badgeStyle}>{t.title}</span>
-                                  <span style={{ 
-                                    fontSize: '11px', 
-                                    color: '#e2e8f0', 
-                                    whiteSpace: 'pre-wrap', 
-                                    lineHeight: '1.4' 
-                                  }}>
+                                  <span style={{ fontSize: '11px', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
                                     {t.content}
                                   </span>
                                   {t.details && (
-                                    <div style={{ 
-                                      marginTop: '4px',
-                                      paddingTop: '4px',
-                                      borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-                                      fontSize: '10px', 
-                                      color: '#38bdf8', 
-                                      opacity: 0.8
-                                    }}>
+                                    <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', fontSize: '10px', color: '#38bdf8', opacity: 0.8 }}>
                                       {t.details}
                                     </div>
                                   )}
@@ -473,9 +412,7 @@ export default function StudyPage() {
                             <>
                               <section>
                                 <h4 style={infoTitleStyle}>재질</h4>
-                                <div style={materialBoxStyle}>
-                                  {selectedPart.material}
-                                </div>
+                                <div style={materialBoxStyle}>{selectedPart.material}</div>
                               </section>
                               <section>
                                 <h4 style={infoTitleStyle}>상세 설명</h4>
@@ -498,7 +435,7 @@ export default function StudyPage() {
                 model={currentModel}
                 ghost={ghost} 
                 selectedPartId={selectedPartId}
-                onSelectPart={handleMultiPartSelect}
+                onSelectPart={handleSelect}
                 isExpanded={isExpanded}
                 mode={viewMode}
               />
