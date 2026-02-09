@@ -79,10 +79,10 @@ const SignupPage = () => {
 
         {/* 이름 입력 */}
         <div style={styles.inputGroup}>
-          <label style={styles.label}>이름</label>
+          <label style={styles.label}>아이디</label>
           <input 
             type="text" 
-            placeholder="홍길동" 
+            placeholder="userID" 
             style={styles.input}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -91,7 +91,7 @@ const SignupPage = () => {
 
         {/* 이메일 입력 */}
         <div style={styles.inputGroup}>
-          <label style={styles.label}>아이디 (이메일)</label>
+          <label style={styles.label}>이메일</label>
           <input 
             type="email" 
             placeholder="example@email.com" 
