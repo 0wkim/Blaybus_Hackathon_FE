@@ -1,6 +1,5 @@
 'use client'
 
-
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import ViewerCanvas from '../components/viewer/ViewerCanvas'
@@ -94,7 +93,6 @@ const AIAssistantPanel = ({
 // ----------------------------------------------------------------------
 // Main Page Component
 // ----------------------------------------------------------------------
-
 const MODEL_DATA: Record<string, any> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
@@ -112,7 +110,30 @@ export default function StudyPage() {
     return (modelId && MODEL_DATA[modelId.toLowerCase()]) || RobotArmModel
   }, [modelId])
   
-  const [viewMode, setViewMode] = useState<StudyViewMode>('simulator')
+  // useState 초기값 설정 로직 변경
+  const [viewMode, setViewMode] = useState<StudyViewMode>(() => {
+    // 현재 모델 ID에 맞는 키 생성 (예: viewMode_robotarm)
+    const storageKey = `viewMode_${modelId}`;
+    const savedMode = localStorage.getItem(storageKey);
+    
+    // 저장된 값이 유효한 모드인지 확인 (이상한 값이 들어있을 경우 대비)
+    const validModes: StudyViewMode[] = ['single', 'assembly', 'edit', 'simulator'];
+    if (savedMode && validModes.includes(savedMode as StudyViewMode)) {
+      return savedMode as StudyViewMode;
+    }
+    
+    // 저장된 값이 없으면 기본값 'simulator' 사용
+    return 'simulator';
+  });
+
+  // viewMode가 변경될 때마다 localStorage에 저장하는 useEffect 추가
+  useEffect(() => {
+    if (modelId) {
+      const storageKey = `viewMode_${modelId}`;
+      localStorage.setItem(storageKey, viewMode);
+    }
+  }, [viewMode, modelId]);
+
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
 
@@ -128,11 +149,21 @@ export default function StudyPage() {
 
   const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
 
-  // 1. 현재 선택된 부품 데이터를 찾는 로직 추가
+  // 현재 선택된 부품 데이터 탐색 
   const selectedPart = useMemo(() => {
     const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
     return currentModel.parts.find((p: any) => p.id === id);
   }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
+
+  // 중복 제거된 부품 목록 생성 
+  // 이름(name)이 같은 부품은 하나만 남기고, 썸네일이 있는 것만 필터링
+  const uniqueParts = useMemo(() => {
+    return currentModel.parts
+      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "") // 썸네일 있는 것만
+      .filter((part: any, index: number, self: any[]) => 
+        index === self.findIndex((t: any) => t.name === part.name)
+      );
+  }, [currentModel]);
 
   // Ghost Mode 설정
   useEffect(() => {
@@ -143,7 +174,7 @@ export default function StudyPage() {
     }
   }, [viewMode]);
 
-  // [중요] 뷰 모드가 변경되면 선택된 부품 초기화
+  // 뷰 모드가 변경되면 선택된 부품 초기화
   useEffect(() => {
     if (viewMode === 'edit') return; 
     setSelectedPartId(null);
@@ -298,14 +329,21 @@ export default function StudyPage() {
               <div style={singleModeContainerStyle}>
                 {viewMode === 'single' && (
                   <div id="part-list-sidebar" style={singleSidebarStyle}>
-                    {/* ✅ 중복 제거 filter 로직 삭제하여 모든 부품 표시 */}
-                    {currentModel.parts
-                      .filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "")
-                      .map((p: any) => (
-                        <div key={p.id} style={singleSidebarItemStyle(activeSinglePartId === p.id)} onClick={() => setActiveSinglePartId(p.id)}>
-                          <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.id} />
+                    {uniqueParts.map((p: any) => {
+                      const isSelected = activeSinglePartId 
+                        ? currentModel.parts.find((cp:any) => cp.id === activeSinglePartId)?.name === p.name 
+                        : false;
+
+                      return (
+                        <div 
+                          key={p.id} 
+                          style={singleSidebarItemStyle(isSelected)} 
+                          onClick={() => setActiveSinglePartId(p.id)} // 클릭 시 해당 대표 부품의 ID로 설정
+                        >
+                          <img src={p.thumbnail} style={sidebarThumbStyle} alt={p.name} />
                         </div>
-                      ))}
+                      );
+                    })}
                   </div>
                 )}
 
@@ -493,10 +531,10 @@ export default function StudyPage() {
     </div>
   )
 }
+
 // ----------------------------------------------------------------------
 // Styles
 // ----------------------------------------------------------------------
-
 const containerStyle: React.CSSProperties = {
   height: '100vh',
   display: 'flex',
