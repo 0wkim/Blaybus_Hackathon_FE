@@ -249,6 +249,48 @@ export default function StudyPage() {
     setApiPartDetails(null);
   }, [modelId]);
 
+  const saveSimulation = async () => {
+    if (!modelId || !viewerRef.current) return
+
+    const payload: any = {
+      assembly: {},
+      edit: {},
+      simulator: {},
+    }
+
+    const cameraState = viewerRef.current.getFullCameraState()
+    const partsState = viewerRef.current.getPartsState()
+
+    if (viewMode === 'assembly') {
+      payload.assembly = { cameraState }
+    }
+
+    if (viewMode === 'edit') {
+      payload.edit = {
+        cameraState,
+        partsState,
+      }
+    }
+
+    if (viewMode === 'simulator') {
+      payload.simulator = {
+        cameraState,
+        partsState,
+      }
+    }
+
+    await api.post(
+      `/api/models/${modelId}/simulations`,
+      payload
+    )
+  }
+
+  useEffect(() => {
+    saveSimulation()
+  }, [viewMode])
+
+
+
   // ... (Camera State Restoration 코드는 기존과 동일하므로 생략 가능, 혹은 그대로 두세요) ...
   // [Camera State Restoration 코드 블록 위치]
 

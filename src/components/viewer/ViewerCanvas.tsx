@@ -15,6 +15,23 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import type { ModelDef } from '../viewer/types'
 
 export type ViewerCanvasHandle = {
+  getFullCameraState: () => {
+    position: { x: number; y: number; z: number }
+    target: { x: number; y: number; z: number }
+    rotation: { x: number; y: number; z: number }
+    quaternion: { x: number; y: number; z: number; w: number }
+    zoom: number
+    fov: number
+  }
+
+  getPartsState: () => Array<{
+    partUuid: string
+    position: { x: number; y: number; z: number }
+    rotation: { x: number; y: number; z: number }
+    isExploded: boolean
+  }>
+
+
   zoomIn: () => void
   zoomOut: () => void
   resetCamera: () => void
@@ -91,6 +108,64 @@ const ViewerCanvas = forwardRef<
   };
 
   useImperativeHandle(ref, () => ({
+    getFullCameraState() {
+      if (!refs.current) throw new Error('Camera not ready')
+
+      const { camera, controls } = refs.current
+
+      return {
+        position: {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z,
+        },
+        target: {
+          x: controls.target.x,
+          y: controls.target.y,
+          z: controls.target.z,
+        },
+        rotation: {
+          x: camera.rotation.x,
+          y: camera.rotation.y,
+          z: camera.rotation.z,
+        },
+        quaternion: {
+          x: camera.quaternion.x,
+          y: camera.quaternion.y,
+          z: camera.quaternion.z,
+          w: camera.quaternion.w,
+        },
+        zoom: camera.zoom,
+        fov: camera.fov,
+      }
+    },
+
+    getPartsState() {
+      return Object.entries(partsRef.current)
+        .map(([id, p]) => {
+          const partUuid = model.parts.find(pt => pt.id === id)?.partUuid
+          if (!partUuid) return null
+
+          return {
+            partUuid,
+            position: {
+              x: p.root.position.x,
+              y: p.root.position.y,
+              z: p.root.position.z,
+            },
+            rotation: {
+              x: p.root.rotation.x,
+              y: p.root.rotation.y,
+              z: p.root.rotation.z,
+            },
+            isExploded: !p.isDone,
+          }
+        })
+        .filter(Boolean)
+    },
+
+
+
     zoomIn() {
       if (!refs.current) return
       const dir = new THREE.Vector3()
@@ -227,7 +302,7 @@ const ViewerCanvas = forwardRef<
     controls.target.set(...(initialCameraState?.target ?? [0, 0.4, 0]))
 
     const transformControls = new TransformControls(camera, renderer.domElement)
-    scene.add(transformControls as unknown as THREE.Object3D)
+    scene.add(transformControls.getHelper());
     transformControls.addEventListener('dragging-changed', (e) => {
       controls.enabled = !e.value
     })
