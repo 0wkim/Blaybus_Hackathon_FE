@@ -80,71 +80,234 @@ const normalizeName = (name: string | undefined) => {
 };
 
 // ----------------------------------------------------------------------
-// AI Assistant Component (기존 유지)
+// Types
+// ----------------------------------------------------------------------
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  timestamp: number;
+}
+
+// ----------------------------------------------------------------------
+// AI Assistant Component (Chat Interface)
 // ----------------------------------------------------------------------
 const AIAssistantPanel = ({ 
+  modelUuid, 
   targetPart, 
-  modelName, 
   active 
 }: { 
+  modelUuid: string | undefined, 
   targetPart: string | null, 
-  modelName: string, 
   active: boolean 
 }) => {
-  const [response, setResponse] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 초기 환영 메시지 (한 번만 실행)
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        {
+          id: 'welcome',
+          role: 'assistant',
+          text: "안녕하세요! 이 모델에 대해 궁금한 점이 있으신가요? 부품을 선택하거나 자유롭게 질문해 주세요.",
+          timestamp: Date.now()
+        }
+      ]);
+    }
+  }, []);
+
+  // 부품 선택 시 안내 메시지 (선택 사항 - 너무 시끄러우면 제거 가능)
+  useEffect(() => {
+    if (targetPart) {
+      // 사용자가 방금 선택한 부품에 대해 물어보기 쉽도록 입력창에 포커스 등을 줄 수 있음
+      // 여기서는 조용히 넘어가거나, 필요하면 시스템 메시지 추가 가능
+    }
+  }, [targetPart]);
+
+  // 스크롤 자동 이동
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    setResponse('');
-    setError(null);
-  }, [targetPart, modelName]);
+    scrollToBottom();
+  }, [messages, isLoading]);
 
-  const handleAskAI = async () => {
-    if (!targetPart) return;
+  const handleSendMessage = async () => {
+    if (!input.trim() || !modelUuid) return;
 
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      text: input,
+      timestamp: Date.now()
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
     setIsLoading(true);
-    setError(null);
 
     try {
-      const res = await api.post('/api/ai', {
-        modelName,
-        partName: targetPart,
+      // 선택된 부품이 있다면 질문에 컨텍스트를 은연중에 포함할 수도 있음
+      // 현재는 사용자 입력 그대로 전송
+      const res = await api.post(`/api/chat/${modelUuid}/message`, {
+        message: userMsg.text
       });
-      setResponse(res.data.text);
+
+      if (res.data.success) {
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          text: res.data.message,
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+      } else {
+        throw new Error(res.data.message || "응답 실패");
+      }
     } catch (err: any) {
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        text: "죄송합니다. 오류가 발생하여 답변을 가져올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, errorMsg]);
       console.error(err);
-      const errorMessage = err.response?.data?.message || err.message || 'AI 요청 실패';
-      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   return (
-    <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h3 style={{ ...panelTitleStyle, marginBottom: 0 }}>AI Assistant</h3>
+    <section style={{ ...panelCardStyle, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 0, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(15, 23, 42, 0.6)' }}>
+        <h3 style={{ ...panelTitleStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>🤖</span> AI Assistant
+        </h3>
         <div style={statusDotStyle(active)} />
       </div>
 
-      <div style={{ ...aiStatusStyle, flex: 1, flexDirection: 'column', gap: '10px' }}>
-        {!targetPart ? (
-          <span style={{ fontSize: '14px', color: '#64748b' }}>
-            부품을 선택하면 AI 분석을 사용할 수 있습니다.
-          </span>
-        ) : (
-          <>
-            {!response && !isLoading && !error && (
-              <button onClick={handleAskAI} style={aiButtonStyle}>
-                ✨ AI 분석 요청하기
-              </button>
-            )}
-            {isLoading && <span>⏳ 분석 중...</span>}
-            {error && <span style={{ color: '#ef4444' }}>⚠️ {error}</span>}
-            {response && <div style={{ whiteSpace: 'pre-wrap' }}>{response}</div>}
-          </>
+      {/* Chat Area */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {messages.map((msg) => (
+          <div 
+            key={msg.id} 
+            style={{ 
+              alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              maxWidth: '85%',
+            }}
+          >
+            <div style={{ 
+              marginBottom: '4px', 
+              fontSize: '11px', 
+              color: '#64748b', 
+              textAlign: msg.role === 'user' ? 'right' : 'left',
+              paddingLeft: '4px', paddingRight: '4px'
+            }}>
+              {msg.role === 'user' ? 'Me' : 'AI'}
+            </div>
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: msg.role === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
+              background: msg.role === 'user' ? '#2563eb' : '#1e293b',
+              color: '#f1f5f9',
+              fontSize: '13.5px',
+              lineHeight: '1.6',
+              whiteSpace: 'pre-wrap',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              border: msg.role === 'assistant' ? '1px solid #334155' : 'none'
+            }}>
+              {msg.text}
+            </div>
+          </div>
+        ))}
+        
+        {isLoading && (
+          <div style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+            <div style={{ marginBottom: '4px', fontSize: '11px', color: '#64748b', paddingLeft: '4px' }}>AI</div>
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: '4px 16px 16px 16px',
+              background: '#1e293b',
+              border: '1px solid #334155',
+              color: '#94a3b8',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span className="loading-dots">답변 생성 중...</span>
+            </div>
+          </div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Area */}
+      <div style={{ padding: '16px', borderTop: '1px solid #1e293b', background: 'rgba(15, 23, 42, 0.8)' }}>
+        {targetPart && (
+           <div style={{ marginBottom: '8px', fontSize: '11px', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+             <span>🎯 선택됨: </span>
+             <span style={{ fontWeight: 700 }}>{targetPart}</span>
+           </div>
+        )}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={targetPart ? `${targetPart}에 대해 물어보세요...` : "궁금한 내용을 입력하세요..."}
+            style={{
+              flex: 1,
+              background: '#0f172a',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              padding: '12px',
+              color: '#fff',
+              fontSize: '13px',
+              resize: 'none',
+              outline: 'none',
+              height: '46px', // 기본 높이
+              lineHeight: '1.5',
+              fontFamily: 'inherit'
+            }}
+          />
+          <button 
+            onClick={handleSendMessage}
+            disabled={isLoading || !input.trim()}
+            style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: input.trim() ? '#3b82f6' : '#1e293b',
+              border: input.trim() ? 'none' : '1px solid #334155',
+              color: input.trim() ? '#fff' : '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: input.trim() ? 'pointer' : 'default',
+              transition: 'all 0.2s'
+            }}
+          >
+            ➤
+          </button>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '10px', color: '#475569' }}>
+          AI는 실수를 할 수 있습니다. 중요한 정보는 확인하세요.
+        </div>
       </div>
     </section>
   );
@@ -723,8 +886,8 @@ export default function StudyPage() {
         {!isExpanded && (
           <aside style={rightPanelStyle}>
             <AIAssistantPanel 
+              modelUuid={modelId} // URL 파라미터에서 가져온 UUID
               targetPart={currentTargetPart} 
-              modelName={modelId || "RobotArm"} 
               active={!!currentTargetPart}
             />
 
