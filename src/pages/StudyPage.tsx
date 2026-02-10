@@ -10,7 +10,6 @@ import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
 import { RobotGripperModel } from '../components/viewer/objects/RobotGripper/model'
 import Header from '../components/Header'
 
-
 // ----------------------------------------------------------------------
 // AI Assistant Component
 // ----------------------------------------------------------------------
@@ -95,16 +94,14 @@ const AIAssistantPanel = ({
 // Constants & Types
 // ----------------------------------------------------------------------
 
-// 로컬 데이터 매핑 (API가 좌표 정보가 없으므로, UUID와 매칭할 로컬 데이터 힌트가 필요할 수 있음)
-// 다만, URL이 UUID로 오기 때문에 초기 로딩시에는 'RobotArmModel'을 기본으로 보여주다가 API 응답 후 교체하는 방식을 씁니다.
 const LOCAL_MODEL_DATA: Record<string, ModelDef> = {
   robotarm: RobotArmModel,
   suspension: SuspensionModel,
   v4engine: V4EngineModel,
   robotgripper: RobotGripperModel,
+  // 필요한 경우 여기에 다른 로컬 모델 추가
 };
 
-// ... (Types interface 그대로 유지) ...
 type StudyViewMode = 'single' | 'assembly' | 'edit' | 'simulator'
 
 interface ApiUsage { title: string; content: string; }
@@ -121,41 +118,44 @@ interface ApiResponse {
     usage: ApiUsage[];
     theory: ApiTheory[];
     parts: ApiPart[];
-  };
+   };
+}
+
+interface PartDetailData {
+  partUuid: string;
+  name: string;
+  material: string;
+  description: string;
+  partModelUrl: string;
+  thumbnailUrl: string;
 }
 
 interface PartDetailResponse {
-    success: boolean;
-    message: string;
-    data: {
-        partUuid: string;
-        partUrl: string;
-        description: string;
-    }
+  success: boolean;
+  message: string;
+  data: PartDetailData;
 }
 
+// ----------------------------------------------------------------------
+// Main Component
+// ----------------------------------------------------------------------
 export default function StudyPage() {
-  const { modelId } = useParams<{ modelId: string }>() // 이제 이게 UUID 입니다.
+  const { modelId } = useParams<{ modelId: string }>() // UUID
   const viewerRef = useRef<ViewerCanvasHandle>(null)
   
-  const [currentModel, setCurrentModel] = useState<ModelDef>(RobotArmModel); // 초기값은 안전하게 로컬 데이터 중 하나
-  const [isLoadingModel, setIsLoadingModel] = useState(false);
-  const [apiPartDescription, setApiPartDescription] = useState<string | null>(null);
+  // ✅ [수정 1] 초기값을 null로 설정하여 데이터 로드 전에는 렌더링 방지
+  const [currentModel, setCurrentModel] = useState<ModelDef | null>(null); 
+  const [isLoadingModel, setIsLoadingModel] = useState(true); // 로딩 상태 true로 시작
+  const [apiPartDetails, setApiPartDetails] = useState<PartDetailData | null>(null);
 
-  // ----------------------------------------------------------------------
-  // 1. Model Data Fetching (UUID 사용)
-  // ----------------------------------------------------------------------
+  // 1. Model Data Fetching
   useEffect(() => {
-    // modelId가 없으면 중단
     if (!modelId) return;
 
     const fetchModelData = async () => {
       setIsLoadingModel(true);
 
       try {
-        // ✅ [수정] 매핑 과정 없이 URL 파라미터(UUID)를 바로 사용
-        console.log("Fetching API with UUID:", modelId);
-        
         const res = await fetch(`/api/models/${modelId}`, {
             credentials: 'include',
         });
@@ -170,10 +170,10 @@ export default function StudyPage() {
         if (json.success) {
           const apiData = json.data;
           
-          // [로컬 데이터 매칭 로직]
-          // API에서 받은 타이틀("V4 Engine") 등을 이용해 적절한 로컬 데이터(좌표값 보유)를 찾습니다.
-          // 못 찾으면 기본값(RobotArmModel)을 베이스로 씁니다.
+          // 로컬 데이터 매칭 (좌표값 확보용)
           const normalizedTitle = apiData.title.toLowerCase().replace(/[\s-_]/g, '');
+          // 매칭되는 로컬 데이터가 없으면 RobotArm을 베이스로 쓰되, 
+          // 초기 렌더링 시에는 currentModel이 null이므로 화면에 'RobotArm'이 먼저 뜨진 않음.
           const baseLocalModel = LOCAL_MODEL_DATA[normalizedTitle] || RobotArmModel;
 
           // 로컬 데이터 + API 데이터 병합
@@ -188,8 +188,8 @@ export default function StudyPage() {
             if (matchedApiPart) {
               return {
                 ...localPart,
-                path: matchedApiPart.partUrl, // API URL로 교체
-                partUuid: matchedApiPart.partUuid, // 상세 조회용 UUID
+                path: matchedApiPart.partUrl, // API URL 사용
+                partUuid: matchedApiPart.partUuid,
               };
             }
             return localPart;
@@ -216,21 +216,20 @@ export default function StudyPage() {
     fetchModelData();
   }, [modelId]);
 
-  // ----------------------------------------------------------------------
   // View Mode & Selection Logic
-  // ----------------------------------------------------------------------
   const [viewMode, setViewMode] = useState<StudyViewMode>('simulator');
 
-  // [수정] 모델이 바뀌면(UUID 변경) 뷰 모드 및 카메라 리셋
+  // 모델 변경 시 초기화
   useEffect(() => {
     if (!modelId) return;
     setViewMode('simulator');
-    // 이전 모델의 상태가 남지 않도록 초기화
     setSelectedPartId(null);
     setActiveSinglePartId(null);
+    setApiPartDetails(null);
+    // currentModel은 fetchModelData에서 업데이트됨
   }, [modelId]);
 
-  // ... (Camera 저장/복원 로직 유지) ...
+  // Camera State (Local Storage)
   useEffect(() => {
     const storageKey = `camera_${modelId}_${viewMode}`;
     const saveInterval = setInterval(() => {
@@ -259,10 +258,6 @@ export default function StudyPage() {
     }
   }, [modelId, viewMode]);
 
-  // ... (나머지 UI State, Event Handler, Memo 로직 등은 기존 코드 그대로 사용) ...
-  // 중복되는 코드는 생략하고 핵심 변경사항 위주로 적용해 주세요.
-  
-  // (아래 변수 선언들은 기존과 동일)
   const [selectedPartId, setSelectedPartId] = useState<string | null>(null)
   const [activeSinglePartId, setActiveSinglePartId] = useState<string | null>(null)
   const currentTargetPart = viewMode === 'single' ? activeSinglePartId : selectedPartId;
@@ -277,9 +272,9 @@ export default function StudyPage() {
   const [memoUuid, setMemoUuid] = useState<string | null>(null)
   const [memoLoading, setMemoLoading] = useState(false)
 
-  // Memo Fetching 도 modelId(UUID)를 바로 사용
+  // Memo Fetching
   useEffect(() => {
-    if (!modelId) return; // modelId가 곧 UUID
+    if (!modelId) return;
 
     const fetchMemo = async () => {
       setMemoLoading(true);
@@ -325,7 +320,8 @@ export default function StudyPage() {
 
   // Part Detail Fetching
   useEffect(() => {
-    setApiPartDescription(null);
+    setApiPartDetails(null);
+
     if (!currentTargetPart || !currentModel) return;
 
     const part = currentModel.parts.find((p: any) => p.id === currentTargetPart);
@@ -335,8 +331,8 @@ export default function StudyPage() {
         fetch(`/api/parts/${partUuid}`)
             .then(res => res.json())
             .then((json: PartDetailResponse) => {
-                if (json.success && json.data?.description) {
-                    setApiPartDescription(json.data.description);
+                if (json.success && json.data) {
+                    setApiPartDetails(json.data);
                 }
             })
             .catch(err => console.error("Part detail fetch failed:", err));
@@ -345,15 +341,16 @@ export default function StudyPage() {
 
   // useMemo hooks
   const selectedPart = useMemo(() => {
+    if (!currentModel) return null;
     const id = viewMode === 'single' ? activeSinglePartId : selectedPartId;
     return currentModel.parts.find((p: any) => p.id === id);
   }, [viewMode, activeSinglePartId, selectedPartId, currentModel]);
 
   const uniqueParts = useMemo(() => {
+    if (!currentModel) return [];
     return currentModel.parts.filter((p: any) => p.thumbnail && p.thumbnail.trim() !== "");
   }, [currentModel]);
 
-  // Effects for ViewMode
   useEffect(() => {
     if (viewMode === 'single' || viewMode === 'edit') setGhost(false);
     else setGhost(true);
@@ -365,7 +362,6 @@ export default function StudyPage() {
     setActiveSinglePartId(null);
   }, [viewMode, modelId]);
 
-  // Global Key & Style Effects
   useEffect(() => {
     document.body.style.margin = '0'
     document.body.style.backgroundColor = '#080c14' 
@@ -385,9 +381,28 @@ export default function StudyPage() {
     if (viewMode === 'single') setActiveSinglePartId(id);
     else setSelectedPartId(id);
   }, [viewMode]);
+
   // ----------------------------------------------------------------------
   // Render
   // ----------------------------------------------------------------------
+
+  // ✅ [수정 2] 데이터가 준비되지 않았으면 로딩 화면을 보여줌
+  // 이 처리가 없으면 초기값(null) 때문에 에러가 나거나, 
+  // 초기값을 RobotArm으로 했을 경우 깜빡임이 발생함.
+  if (isLoadingModel || !currentModel) {
+    return (
+      <div style={containerStyle}>
+         <Header />
+         <main style={{ ...mainLayoutStyle(false), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ color: '#fff', fontSize: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+              <span>⏳</span>
+              <span>모델 데이터를 불러오는 중입니다...</span>
+            </div>
+         </main>
+      </div>
+    );
+  }
+
   return (
     <div style={containerStyle}>
       <style>{`
@@ -405,7 +420,6 @@ export default function StudyPage() {
         #memo-textarea::-webkit-scrollbar-track { background: transparent; }
         #memo-textarea::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.25); border-radius: 10px; }
         #memo-textarea::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.5); }
-
       `}</style>
 
       <Header />
@@ -425,15 +439,8 @@ export default function StudyPage() {
           </div>
 
           <div style={canvasContainerStyle}>
-            {isLoadingModel && (
-              <div style={{ 
-                position: 'absolute', top: 20, right: 20, zIndex: 100, 
-                background: 'rgba(0,0,0,0.6)', padding: '5px 10px', borderRadius: '5px', color: '#fff' 
-              }}>
-                모델 데이터 동기화 중...
-              </div>
-            )}
-
+            {/* 3D 뷰어 컨테이너 */}
+            
             {viewMode !== 'single' && (
               <div style={zoomControlsStyle}>
                 <button style={zoomBtnStyle} onClick={() => viewerRef.current?.zoomIn()}>＋</button>
@@ -524,6 +531,8 @@ export default function StudyPage() {
 
                 <div style={singleViewerAreaStyle}>
                     <ViewerCanvas 
+                      // ✅ [수정] key에 viewMode를 추가하여 모드 전환 시 뷰어를 완전히 초기화
+                      key={`viewer-${viewMode}-${modelId}`}
                       ref={viewerRef} 
                       model={currentModel} 
                       ghost={ghost} 
@@ -544,50 +553,17 @@ export default function StudyPage() {
                     <h3 style={partNameTitleStyle}>
                       {viewMode === 'assembly' && !selectedPartId 
                         ? currentModel.description.title 
-                        : (selectedPart?.name || selectedPartId || "부품을 선택하세요")}
+                        : (apiPartDetails?.name || selectedPart?.name || selectedPartId || "부품을 선택하세요")
+                      }
                     </h3>
                     <div style={{ height: '1px', background: 'rgba(56, 189, 248, 0.2)', margin: '12px 0', flexShrink: 0 }} />
 
                     <div id="info-panel-content" style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
                       {(viewMode === 'assembly' && !selectedPartId) ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          <section>
-                            <h4 style={infoTitleStyle}>설명</h4>
-                            <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>{currentModel.description.summary}</p>
-                          </section>
-                          
-                          <section>
-                            <h4 style={infoTitleStyle}>주요 용도</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {currentModel.description.usage.map((item: any) => (
-                                <div key={item.title} style={badgeListItemStyle}>
-                                  <span style={badgeStyle}>{item.title}</span>
-                                  <span style={{ fontSize: '11px', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
-                                    {item.content}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </section>
-
-                          <section>
-                            <h4 style={infoTitleStyle}>관련 이론</h4>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {currentModel.description.theory.map((t: any) => (
-                                <div key={t.title} style={badgeListItemStyle}>
-                                  <span style={badgeStyle}>{t.title}</span>
-                                  <span style={{ fontSize: '11px', color: '#e2e8f0', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
-                                    {t.content}
-                                  </span>
-                                  {t.details && (
-                                    <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)', fontSize: '10px', color: '#38bdf8', opacity: 0.8 }}>
-                                      {t.details}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </section>
+                          <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                             {currentModel.description.summary}
+                          </p>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -596,15 +572,13 @@ export default function StudyPage() {
                               <section>
                                 <h4 style={infoTitleStyle}>재질</h4>
                                 <div style={materialBoxStyle}>
-                                  {/* 재질 정보는 로컬 데이터를 유지 */}
-                                  {selectedPart.material}
+                                  {apiPartDetails?.material || selectedPart.material || "정보 없음"}
                                 </div>
                               </section>
                               <section>
                                 <h4 style={infoTitleStyle}>상세 설명</h4>
-                                {/* API 값이 있으면 우선 표시, 없으면 로컬 값 사용 */}
                                 <p style={{ ...infoContentStyle, color: '#e2e8f0' }}>
-                                    {apiPartDescription || selectedPart.desc}
+                                    {apiPartDetails?.description || selectedPart.desc || "설명이 없습니다."}
                                 </p>
                               </section>
                             </>
@@ -618,15 +592,16 @@ export default function StudyPage() {
                 </div>
               </div>
             ) : (
-              <ViewerCanvas
-                key="viewer-multi"
-                ref={viewerRef}
-                model={currentModel}
+              <ViewerCanvas 
+                // ✅ [수정] key에 viewMode를 추가하여 모드 전환 시 뷰어를 완전히 초기화
+                key={`viewer-${viewMode}-${modelId}`}
+                ref={viewerRef} 
+                model={currentModel} 
                 ghost={ghost} 
-                selectedPartId={selectedPartId}
-                onSelectPart={handleSelect}
-                isExpanded={isExpanded}
-                mode={viewMode}
+                selectedPartId={currentTargetPart} 
+                onSelectPart={handleSelect} 
+                isExpanded={isExpanded} 
+                mode={viewMode} 
               />
             )}
           </div>
