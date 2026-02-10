@@ -9,6 +9,7 @@ import { SuspensionModel } from '../components/viewer/objects/Suspension/model'
 import { V4EngineModel } from '../components/viewer/objects/V4Engine/model'
 import { RobotGripperModel } from '../components/viewer/objects/RobotGripper/model'
 import Header from '../components/Header'
+import type { ModelDef } from '../components/viewer/types'
 
 // ----------------------------------------------------------------------
 // AI Assistant Component
@@ -198,10 +199,11 @@ export default function StudyPage() {
           setCurrentModel({
             ...baseLocalModel,
             description: {
-                title: apiData.title,
-                summary: apiData.summary,
-                usage: apiData.usage?.length > 0 ? apiData.usage : baseLocalModel.description.usage,
-                theory: apiData.theory?.length > 0 ? apiData.theory : baseLocalModel.description.theory,
+              title: apiData.title,
+              summary: apiData.summary,
+              // description 뒤에 ?.를 붙이고, 없을 경우 빈 배열([])을 사용하도록 수정
+              usage: apiData.usage?.length > 0 ? apiData.usage : (baseLocalModel.description?.usage || []),
+              theory: apiData.theory?.length > 0 ? apiData.theory : (baseLocalModel.description?.theory || []),
             },
             parts: mergedParts
           });
@@ -552,7 +554,7 @@ export default function StudyPage() {
                   <div style={{ ...infoBoxStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <h3 style={partNameTitleStyle}>
                       {viewMode === 'assembly' && !selectedPartId 
-                        ? currentModel.description.title 
+                        ? (currentModel.description?.title || currentModel.name || "모델 정보 없음")
                         : (apiPartDetails?.name || selectedPart?.name || selectedPartId || "부품을 선택하세요")
                       }
                     </h3>
@@ -562,7 +564,7 @@ export default function StudyPage() {
                       {(viewMode === 'assembly' && !selectedPartId) ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                             {currentModel.description.summary}
+                             {currentModel.description?.summary || "요약 설명이 없습니다."}
                           </p>
                         </div>
                       ) : (
@@ -1111,22 +1113,22 @@ function Tab({ label, active, onClick }: { label: string; active: boolean; onCli
   )
 };
 
-const badgeListItemStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '4px',
-  padding: '8px',
-  background: 'rgba(30, 41, 59, 0.4)',
-  borderRadius: '8px',
-  border: '1px solid rgba(56, 189, 248, 0.1)',
-};
+// const badgeListItemStyle: React.CSSProperties = {
+//   display: 'flex',
+//   flexDirection: 'column',
+//   gap: '4px',
+//   padding: '8px',
+//   background: 'rgba(30, 41, 59, 0.4)',
+//   borderRadius: '8px',
+//   border: '1px solid rgba(56, 189, 248, 0.1)',
+// };
 
-const badgeStyle: React.CSSProperties = {
-  fontSize: '11px',
-  fontWeight: 700,
-  color: '#38bdf8',
-  textTransform: 'uppercase',
-};
+// const badgeStyle: React.CSSProperties = {
+//   fontSize: '11px',
+//   fontWeight: 700,
+//   color: '#38bdf8',
+//   textTransform: 'uppercase',
+// };
 
 const materialBoxStyle: React.CSSProperties = {
   padding: '10px',
