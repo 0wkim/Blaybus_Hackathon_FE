@@ -167,24 +167,33 @@ export default function StudyPage() {
         }
 
         const json: ApiResponse = await res.json();
+
+        console.log("🔥 [API Response] Raw Data:", json);
         
         if (json.success) {
           const apiData = json.data;
           
-          // 로컬 데이터 매칭 (좌표값 확보용)
           const normalizedTitle = apiData.title.toLowerCase().replace(/[\s-_]/g, '');
-          // 매칭되는 로컬 데이터가 없으면 RobotArm을 베이스로 쓰되, 
-          // 초기 렌더링 시에는 currentModel이 null이므로 화면에 'RobotArm'이 먼저 뜨진 않음.
           const baseLocalModel = LOCAL_MODEL_DATA[normalizedTitle] || RobotArmModel;
 
-          // 로컬 데이터 + API 데이터 병합
           const mergedParts = baseLocalModel.parts.map((localPart) => {
-            const localFileName = localPart.path.split('/').pop()?.split('.')[0]?.toUpperCase();
-            
-            const matchedApiPart = apiData.parts.find((apiPart) => 
-              apiPart.partUrl.toUpperCase().includes(localFileName || "") ||
-              apiPart.partUrl.toUpperCase().includes(localPart.id.toUpperCase())
-            );
+            // 1. 로컬 파일명 정규화 (확장자 제거, 대문자, 공백/특수문자 제거)
+            const localFileName = localPart.path.split('/').pop()?.split('.')[0] || "";
+            const normalizedLocalName = localFileName.toUpperCase().replace(/[\s-_%]/g, '');
+            const normalizedLocalId = localPart.id.toUpperCase().replace(/[\s-_%]/g, '');
+
+            const matchedApiPart = apiData.parts.find((apiPart) => {
+              // API URL 파싱 및 정규화
+              // URL 디코딩 (%20 -> 공백)
+              const decodedUrl = decodeURIComponent(apiPart.partUrl);
+              
+              // 파일명만 추출 ("Gear Link1.glb")
+              const urlFileName = decodedUrl.split('/').pop()?.split('?')[0] || "";
+              
+              // 확장자 제거 및 정규화 ("GEARLINK1")
+              const normalizedApiName = urlFileName.split('.')[0].toUpperCase().replace(/[\s-_%]/g, '');
+              return normalizedApiName === normalizedLocalName || normalizedApiName === normalizedLocalId;
+            });
 
             if (matchedApiPart) {
               return {
@@ -201,7 +210,6 @@ export default function StudyPage() {
             description: {
               title: apiData.title,
               summary: apiData.summary,
-              // description 뒤에 ?.를 붙이고, 없을 경우 빈 배열([])을 사용하도록 수정
               usage: apiData.usage?.length > 0 ? apiData.usage : (baseLocalModel.description?.usage || []),
               theory: apiData.theory?.length > 0 ? apiData.theory : (baseLocalModel.description?.theory || []),
             },
